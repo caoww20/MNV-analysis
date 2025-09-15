@@ -1,0 +1,166 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-04-14"
+---
+
+
+```{r}
+### GWAS MNVs生存图
+library(data.table)
+library(survival)
+library(survminer)
+library(grid)
+
+cancer.list <- c("01.Breast","02.Prostate","03.Melanoma","04.Colon","05.Lung","06.Cervical","07.Uterine","08.Bladder","09.Rectal","10.Ovary","11.Kidney")
+
+################################################# 10 years ###################################################################
+### 输出P值
+results.matrix <- data.frame(matrix(ncol = 3, nrow = 0))
+colnames(results.matrix) <- c("Cancer","MNVID","KM_P")
+
+for(cancer in cancer.list){
+  cancer.name <- unlist(strsplit(cancer,"[.]"))[2]
+  
+  raw.data <- fread(paste0("/home/luohh/MNVAnalysis/01.GWAS/02.Cancer/01.Data/02.PhenoData/",cancer,"/clinic.geno.01.tsv"),header = T,stringsAsFactors = F,data.table = F)
+  
+  raw.data <- na.omit(raw.data)
+  raw.data$status[which(raw.data$osDays>3650)] <- "alive"
+  raw.data$osDays[which(raw.data$osDays>3650)] <- 3650
+  raw.data$status <- ifelse(raw.data$status == "alive", 0, 1)
+  raw.data$sex <- ifelse(raw.data$sex == "male", 1, 2)
+  raw.data$population <- factor(raw.data$population)
+  raw.data$sex <- factor(raw.data$sex)
+  raw.data$osDays <- raw.data$osDays/365
+  
+  for(mnv in unique(raw.data$MNVID)){
+    data.mnv <- raw.data[raw.data$MNVID==mnv,]
+    
+    if (length(unique(data.mnv$genotype)) == 2){
+      if (all(unique(data.mnv$genotype) == c(0,1))){
+        geno0.num <- nrow(data.mnv[data.mnv$genotype=="0",])
+        geno1.num <- nrow(data.mnv[data.mnv$genotype=="1",])
+    
+        fit.surv <- survfit(Surv(osDays, status) ~ genotype, data = data.mnv)
+        
+        ### 获取P值
+        diff <- survdiff(Surv(osDays, status) ~ genotype, data=data.mnv)
+        km.p <- diff$pvalue
+        
+        ### 合并结果
+        myrow <- c(cancer.name,mnv,round(km.p,digits = 5))
+        results.matrix <- rbind(results.matrix,myrow)
+        
+        plt <- ggsurvplot(fit.surv,
+                   pval = TRUE,
+                   pval.coord= c(0, 0.01),
+                   pval.size = 5,
+                   color = "genotype",
+                   palette = c("#4169E1","#FF1493"),
+                   legend.title = paste0(mnv," (",cancer.name,")"),
+                   legend.labs = c(paste0("0/0 (n = ",geno0.num,")"), paste0("0/1 (n = ",geno1.num,")")),
+                   legend = c(0.75,0.845),
+                   xlab = "Time (Years)",
+                   ggtheme=theme_bw()+
+                     theme(panel.grid=element_blank(),
+                      plot.margin = unit(rep(1,4),'lines'),
+                      panel.border = element_rect(fill=NA,color="black", linewidth = 1, linetype="solid"),
+                      title = element_text(vjust=1,size=14,face = "bold", color='black'),
+                      axis.text.x=element_text(vjust=1,size=14,face = "bold", color='black'),
+                      axis.title.x=element_text(vjust=0, size=16,face = "bold", color='black'),
+                      axis.text.y=element_text(vjust=1,size=14,face = "bold", color='black'),
+                      axis.title.y=element_text(vjust=2, size=16,face = "bold", color='black'),
+                      legend.text = element_text(vjust=1,size=12, color='black'),
+                      legend.title = element_text(vjust=2, size=12,face = "bold", color='black'),
+                      legend.background = element_rect(fill = NA)
+                     )
+        )
+        ggsave(plt$plot,filename = paste0("/home/luohh/MNVAnalysis/01.GWAS/02.Cancer/04.Plot/01.SurvivalPlot/10years/01/",cancer.name,"-",mnv,".pdf"),width = 6,height = 5)
+        
+      }
+    }else{
+      ### 一种基因型
+      myrow <- c(cancer.name,mnv,"NA")
+      results.matrix <- rbind(results.matrix,myrow)
+    }
+  }
+}
+colnames(results.matrix) <- c("Cancer","MNVID","KM_P")
+write.table(results.matrix,"/home/luohh/MNVAnalysis/01.GWAS/02.Cancer/04.Plot/01.SurvivalPlot/10years/01/11Cancers.survival.p.txt",quote = F,row.names = F,col.names = T)
+```
+
+```{r}
+################################################# all time ###################################################################
+### 输出P值
+results.matrix <- data.frame(matrix(ncol = 3, nrow = 0))
+colnames(results.matrix) <- c("Cancer","MNVID","KM_P")
+
+for(cancer in cancer.list){
+  cancer.name <- unlist(strsplit(cancer,"[.]"))[2]
+  
+  raw.data <- fread(paste0("/home/luohh/MNVAnalysis/01.GWAS/02.Cancer/01.Data/02.PhenoData/",cancer,"/clinic.geno.01.tsv"),header = T,stringsAsFactors = F,data.table = F)
+  
+  raw.data <- na.omit(raw.data)
+  raw.data$status <- ifelse(raw.data$status == "alive", 0, 1)
+  raw.data$sex <- ifelse(raw.data$sex == "male", 1, 2)
+  raw.data$population <- factor(raw.data$population)
+  raw.data$sex <- factor(raw.data$sex)
+  raw.data$osDays <- raw.data$osDays/365
+  
+  for(mnv in unique(raw.data$MNVID)){
+    data.mnv <- raw.data[raw.data$MNVID==mnv,]
+    
+    if (length(unique(data.mnv$genotype)) == 2){
+      if (all(unique(data.mnv$genotype) == c(0,1))){
+        geno0.num <- nrow(data.mnv[data.mnv$genotype=="0",])
+        geno1.num <- nrow(data.mnv[data.mnv$genotype=="1",])
+    
+        fit.surv <- survfit(Surv(osDays, status) ~ genotype, data = data.mnv)
+        
+        ### 获取P值
+        diff <- survdiff(Surv(osDays, status) ~ genotype, data=data.mnv)
+        km.p <- diff$pvalue
+        
+        ### 合并结果
+        myrow <- c(cancer.name,mnv,round(km.p,digits = 5))
+        results.matrix <- rbind(results.matrix,myrow)
+        
+        plt <- ggsurvplot(fit.surv,
+                   pval = TRUE,
+                   pval.coord= c(0, 0.01),
+                   pval.size = 5,
+                   color = "genotype",
+                   palette = c("#4169E1","#FF1493"),
+                   legend.title = paste0(mnv," (",cancer.name,")"),
+                   legend.labs = c(paste0("0/0 (n = ",geno0.num,")"), paste0("0/1 (n = ",geno1.num,")")),
+                   legend = c(0.75,0.845),
+                   xlab = "Time (Years)",
+                   ggtheme=theme_bw()+
+                     theme(panel.grid=element_blank(),
+                      plot.margin = unit(rep(1,4),'lines'),
+                      panel.border = element_rect(fill=NA,color="black", linewidth = 1, linetype="solid"),
+                      title = element_text(vjust=1,size=14,face = "bold", color='black'),
+                      axis.text.x=element_text(vjust=1,size=14,face = "bold", color='black'),
+                      axis.title.x=element_text(vjust=0, size=16,face = "bold", color='black'),
+                      axis.text.y=element_text(vjust=1,size=14,face = "bold", color='black'),
+                      axis.title.y=element_text(vjust=2, size=16,face = "bold", color='black'),
+                      legend.text = element_text(vjust=1,size=12, color='black'),
+                      legend.title = element_text(vjust=2, size=12,face = "bold", color='black'),
+                      legend.background = element_rect(fill = NA)
+                     )
+        )
+        ggsave(plt$plot,filename = paste0("/home/luohh/MNVAnalysis/01.GWAS/02.Cancer/04.Plot/01.SurvivalPlot/allTime/01/",cancer.name,"-",mnv,".pdf"),width = 6,height = 5)
+        
+      }
+    }else{
+      ### 一种基因型
+      myrow <- c(cancer.name,mnv,"NA")
+      results.matrix <- rbind(results.matrix,myrow)
+    }
+  }
+}
+colnames(results.matrix) <- c("Cancer","MNVID","KM_P")
+write.table(results.matrix,"/home/luohh/MNVAnalysis/01.GWAS/02.Cancer/04.Plot/01.SurvivalPlot/allTime/01/11Cancers.survival.p.txt",quote = F,row.names = F,col.names = T)
+```
+
+

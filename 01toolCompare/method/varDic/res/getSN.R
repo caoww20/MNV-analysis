@@ -1,0 +1,6 @@
+df<-read.table('vardict.mnv',header = F,sep = '\t',stringsAsFactors = F)
+df$id<-apply(df[c(3,5,6)],1,paste,collapse='-')
+res<-as.data.frame(as.matrix(table(df$id)))
+res$flag<-rownames(res)
+colnames(res)<-c('num','flag')
+write.table(res,'vardict_SN.txt',sep = '\t',quote = F,row.names = F)

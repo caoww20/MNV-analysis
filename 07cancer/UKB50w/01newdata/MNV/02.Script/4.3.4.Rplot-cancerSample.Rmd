@@ -1,0 +1,41 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-03-21"
+---
+
+
+```{r}
+### 分类癌症数量
+library(tidyverse)
+library(randomcoloR)
+
+palette <- distinctColorPalette(11)
+set.seed(3333)
+palette <- randomColor(count = 11)
+###
+#随机生成颜色
+
+library(RColorBrewer)
+qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
+#处理后有73种差异还比较明显的颜色，基本够用
+col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+
+cancerNum <- read.table('/home/luohh/MNVAnalysis/01.GWAS/02.Cancer/01.Data/02.PhenoData/cancerSample.txt',header = F,stringsAsFactors = F,sep = "\t")
+
+colnames(cancerNum) <- c("SampleNumber","CancerClass")
+cancerNum$CancerClass <- factor(cancerNum$CancerClass,levels = cancerNum$CancerClass[order(cancerNum$SampleNumber,decreasing = T)])
+
+
+ggplot(cancerNum,aes(x=CancerClass,y=SampleNumber,fill=palette))+
+  geom_bar(stat = 'identity')+
+  theme_classic()+
+  ylab(label = "The number of individuals")+
+  theme(axis.text.x = element_text(angle = 45,hjust = 1.0,color = 'black',size = 14,face = 'bold'),
+        axis.text.y = element_text(color = 'black',size = 14,face = 'bold'),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(color = 'black',size = 20,face = 'bold'),
+        legend.position = "")+
+  scale_y_continuous(expand = c(0, 300))
+```
+
