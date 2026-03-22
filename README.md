@@ -1,4 +1,5 @@
-Welcome to the GitHub repository for the manuscript, "Genome-wide identification and annotation of multi-nucleotide variants in human reveal widespread functional differences compared to single nucleotide variants."
+Welcome to the GitHub repository for the manuscript, "Genome-wide identification and annotation of multi-nucleotide variants in human reveal widespread functional differences compared to single nucleotide variants."[![DOI](https://zenodo.org/badge/1057272161.svg)](https://doi.org/10.5281/zenodo.19159675)
+
 
 Here is the analysis code for each part of the manuscript. Each part has an R script `plot.r` for the figures that appear in the manuscript.
 
