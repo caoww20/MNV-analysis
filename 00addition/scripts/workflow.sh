@@ -1,9 +1,12 @@
-# 用途：批量把多套 SNV/MNV 数据转换为 BED/注释输入，调用 MNVAnno 与自编脚本生成基因/区域注释、区域计数、TSS 富集、UTR5/TSS 下游筛选等结果，供后续统计与绘图使用。
-# 依赖：bedtools、Python(2/3) 环境以及 /home/caow/02mnv_new 与 /data/jinww/mnv/MNVAnno 下的脚本与数据库已可访问。
-# 用法：直接执行即可；各输入路径已在脚本内写死，如需复用请调整数据路径与输出文件名。
-# 注意：脚本包含大量一次性分析步骤（部分命令后台 & 执行），可按需求分段运行。
+# Purpose: batch-convert multiple SNV/MNV datasets to BED/annotation inputs, run MNVAnno
+# and custom scripts to generate gene/region annotations, region counts, TSS enrichment,
+# UTR5/TSS downstream filters, and related outputs for downstream stats/plots.
+# Dependencies: bedtools, Python(2/3), and scripts/databases under /home/caow/02mnv_new
+# and /data/jinww/mnv/MNVAnno must be accessible.
+# Usage: run directly; input paths are hard-coded, adjust paths and output names as needed.
+# Note: includes many one-off analysis steps (some background commands). Run in sections.
 #   /data/jinww/mnv/analyse3/02data/03density/02datasets/snv_1000G.txt
-# 在原始文件 raw.txt 的基础上生成 snv.tsv（TAB 分隔）
+# Generate snv.tsv (TAB-delimited) from raw.txt
 awk 'BEGIN{OFS="\t"}{
   split($1, v, ":");
   chr=v[1]; pos=v[2]; ref=v[3]; alt=v[4];
@@ -78,7 +81,8 @@ python3 /home/caow/02mnv_new/scripts/SNVBatchRegionCount.py \
   --build hg38 \
   --flank-to-intergenic
 
-# 统计 SNV 和 MNV 在TSS区域的分布情况，来自https://genome.ucsc.edu/cgi-bin/hgTables?hgsid=3497849289_L2vPrabLMpdRIZnUAlnknOeKdlqp&clade=mammal&org=Human&db=hg38&hgta_group=regulation&hgta_track=robustPeaks&hgta_table=0&hgta_regionType=genome&position=chr7%3A155%2C799%2C529-155%2C812%2C871&hgta_outputType=primaryTable&hgta_outFileName=
+# Count SNV and MNV distribution in TSS regions; source table:
+# https://genome.ucsc.edu/cgi-bin/hgTables?hgsid=3497849289_L2vPrabLMpdRIZnUAlnknOeKdlqp&clade=mammal&org=Human&db=hg38&hgta_group=regulation&hgta_track=robustPeaks&hgta_table=0&hgta_regionType=genome&position=chr7%3A155%2C799%2C529-155%2C812%2C871&hgta_outputType=primaryTable&hgta_outFileName=
 python3 /home/caow/02mnv_new/scripts/CountSNVMNVinRegions.py \
   -r ~/02mnv_new/addition/hgTables.txt \
   --snv snv_TCGA.anno.txt \
@@ -109,7 +113,7 @@ python3 /home/caow/02mnv_new/scripts/CountSNVMNVinRegions.py \
   --mnv /data/jinww/mnv/analyse3/02data/02datasets/GTEx.txt \
   -o tss_region.counts_GTEx.tsv
 
-# 修改了/home/caow/03mnv/analyse3/04adjustError/01region/01num中的数据统计，加入TSS数量统计
+# Updated stats in /home/caow/03mnv/analyse3/04adjustError/01region/01num to include TSS counts
 
 
 grep upstream_variant /home/caow/03mnv/analyse3/02data/01origin/hg38mnv_addgene_oneline |grep 1000G |cut -f3 |sort -u >promotermnv1000G
@@ -124,7 +128,7 @@ BEGIN{OFS="\t"}
   for(i=1;i<=n;i++){
     p=a[i]+0;
     # BED: chr start end id
-    # 单点用 [p-1, p)
+    # Single site uses [p-1, p)
     print "chr"chr, p-1, p, id;
   }
 }' /home/caow/03mnv/analyse3/02data/02datasets/1000G.txt > 1000gmnv.pos.bed
@@ -136,7 +140,7 @@ bedtools intersect -a 1000gmnv.pos.bed -b tss.bed -wa -wb \
 BEGIN{OFS="\t"}
 {
   id=$4;
-  tss=$8;   # intersect 输出：a的4列 + b的4列，所以b的label在第8列
+  tss=$8;   # intersect output: a has 4 columns + b has 4 columns, label in col 8
   if(!( (id SUBSEP tss) in seen )){
     seen[id SUBSEP tss]=1;
     if(id in out) out[id]=out[id]","tss;
@@ -155,7 +159,7 @@ BEGIN{OFS="\t"}
   for(i=1;i<=n;i++){
     p=a[i]+0;
     # BED: chr start end id
-    # 单点用 [p-1, p)
+    # Single site uses [p-1, p)
     print "chr"chr, p-1, p, id;
   }
 }' /home/caow/03mnv/analyse3/02data/02datasets/GTEx.txt > GTExmnv.pos.bed
@@ -167,7 +171,7 @@ bedtools intersect -a GTExmnv.pos.bed -b tss.bed -wa -wb \
 BEGIN{OFS="\t"}
 {
   id=$4;
-  tss=$8;   # intersect 输出：a的4列 + b的4列，所以b的label在第8列
+  tss=$8;   # intersect output: a has 4 columns + b has 4 columns, label in col 8
   if(!( (id SUBSEP tss) in seen )){
     seen[id SUBSEP tss]=1;
     if(id in out) out[id]=out[id]","tss;
@@ -199,7 +203,7 @@ BEGIN{OFS="\t"}
   for(i=1;i<=n;i++){
     p=a[i]+0;
     # BED: chr start end id
-    # 单点用 [p-1, p)
+    # Single site uses [p-1, p)
     print "chr"chr, p-1, p, id;
   }
 }' /home/caow/03mnv/analyse3/02data/02datasets/1000G.txt > 1000gmnv.pos.bed
@@ -209,7 +213,7 @@ bedtools intersect -a GTExmnv.pos.bed -b tss.bed -wa -wb \
 BEGIN{OFS="\t"}
 {
   id=$4;
-  tss=$8;   # intersect 输出：a的4列 + b的4列，所以b的label在第8列
+  tss=$8;   # intersect output: a has 4 columns + b has 4 columns, label in col 8
   if(!( (id SUBSEP tss) in seen )){
     seen[id SUBSEP tss]=1;
     if(id in out) out[id]=out[id]","tss;
@@ -220,45 +224,45 @@ END{
   for(id in out) print id, out[id];
 }' > GTExMNV_to_TSS.tsv
 
-# 1. 排序 (bedtools merge 要求输入必须按坐标排序)
-# 2. 合并重叠区域
-# 3. 计算 Start 和 End 的差值并求和
+# 1. Sort (bedtools merge requires coordinate-sorted input)
+# 2. Merge overlapping regions
+# 3. Sum (End - Start)
 sort -k1,1 -k2,2n  promoter38.bed | \
 bedtools merge -i stdin | \
 awk '{sum += ($3 - $2)} END {print sum}'
 
 
-# 1. 转换 MNV 文件为 BED 格式 (mnv.bed)
-# 逻辑：跳过标题行，解析第6列(snvid)，找到最小和最大坐标
-# 注意：BED 格式是 0-based，所以 Start = min_pos - 1
+# 1. Convert MNV file to BED format (mnv.bed)
+# Logic: skip header, parse column 6 (snvid), find min/max positions
+# Note: BED is 0-based, so Start = min_pos - 1
 awk 'NR>1 {
-    # 将第6列按逗号分割成多个 SNV
+    # Split column 6 by comma into SNVs
     n = split($6, snvs, ",");
     min_p = 1e15; max_p = 0;
     chrom = "";
     
     for (i=1; i<=n; i++) {
-        # 再将每个 SNV 按冒号分割 (chr:pos:ref:alt)
+        # Split each SNV by colon (chr:pos:ref:alt)
         split(snvs[i], parts, ":");
         c = parts[1];
         p = parts[2];
         
-        if (chrom == "") chrom = c; # 记录染色体
-        if (p < min_p) min_p = p;   # 更新最小值
-        if (p > max_p) max_p = p;   # 更新最大值
+        if (chrom == "") chrom = c; # Record chromosome
+        if (p < min_p) min_p = p;   # Update min
+        if (p > max_p) max_p = p;   # Update max
     }
     
-    # 输出: Chr, Start-1, End, MNVID
-    # 使用制表符分隔，确保 bedtools 兼容性
+    # Output: Chr, Start-1, End, MNVID
+    # Tab-delimited for bedtools compatibility
     printf("%s\t%d\t%d\t%s\n", chrom, min_p-1, max_p, $1);
 }' /home/caow/03mnv/analyse3/03basePattern/01process/mnv.txt > mnv_1000ggtex.bed
 
-# 2. 与 UTR5 文件取交集
-# -wa: 输出原始的 A 文件内容 (即 MNV ID)
-# -u: 只要有重叠就输出一次 (去重)
+# 2. Intersect with UTR5 file
+# -wa: output original A content (MNV ID)
+# -u: output once per overlap (dedupe)
 bedtools intersect -a mnv_1000ggtex.bed -b /home/caow/01miRNASNP/gene/utr5_cleaned.bed -wa | cut -f4 | sort -u > mnv_in_utr5_ids.txt
 
-# 查看结果前几行
+# Preview first lines
 head mnv_in_utr5_ids.txt
 
 bedtools intersect -a mnv_1000ggtex.bed -b /home/caow/03mnv/analyse3/00addition/data/tss_downstream_2000.bed -wa | cut -f4 | sort -u > mnv_in_tss_downstream_ids.txt
@@ -302,21 +306,21 @@ END{
 
 awk '
 {
-    # 1. 跳过注释行
+    # 1. Skip comment lines
     if ($0 ~ /^#/ || $0 ~ /^track/ || $0 ~ /^browser/) next;
 
-    # 2. 检查列数是否足够
+    # 2. Check column count
     if (NF < 3) {
         print "Error: Line " NR " has fewer than 3 columns -> " $0;
         next;
     }
 
-    # 3. 检查坐标是否为负数
+    # 3. Check for negative coordinates
     if ($2 < 0 || $3 < 0) {
         print "Error: Line " NR " contains negative coordinates -> " $0;
     }
 
-    # 4. 检查 Start 是否小于 End (Start < End)
+    # 4. Check Start < End
     if ($2 >= $3) {
         print "Error: Line " NR " has Start >= End -> " $0;
     }
@@ -341,14 +345,14 @@ $0!~/^#/ && $3=="gene"{
 
   id="."; name=".";
 
-  # 提取 ID=... （如 gene:ENSG...）
+  # Extract ID=... (e.g., gene:ENSG...)
   if ($9 ~ /(^|;)ID=/) {
     id=$9
     sub(/.*(^|;)ID=/, "", id)
     sub(/;.*/, "", id)
   }
 
-  # 提取 Name=... （如 B3GALT6）
+  # Extract Name=... (e.g., B3GALT6)
   if ($9 ~ /(^|;)Name=/) {
     name=$9
     sub(/.*(^|;)Name=/, "", name)
@@ -364,7 +368,7 @@ sort -k1,1 -k2,2n /home/caow/03mnv/analyse3/00addition/data/1000gmnv.pos.bed > 1
 bedtools intersect -a hg38genes.bed -b 1000gmnvpos.sorted.bed -wa -wb \
 | awk 'BEGIN{OFS="\t"}
 {
-  gene=$4; name=$5; strand=$6; mnv=$10;   # 6列gene + 4列MNV => MNV_ID在第10列
+  gene=$4; name=$5; strand=$6; mnv=$10;   # 6 gene cols + 4 MNV cols => MNV_ID in col 10
   key = gene "|" name "|" strand "|" mnv
   gkey = gene "|" name "|" strand
   if (!(key in seen)) {
@@ -374,7 +378,7 @@ bedtools intersect -a hg38genes.bed -b 1000gmnvpos.sorted.bed -wa -wb \
 }
 END{
   for (g in cnt) {
-    # 把 gkey 拆回三列输出
+    # Split gkey back into three columns
     n=split(g, a, "|")
     print a[1], a[2], a[3], cnt[g]
   }
@@ -383,8 +387,8 @@ END{
 
 awk 'BEGIN{OFS="\t"}
 {
-  id=$1; chr=$2; pos=$3;              # pos 是 1-based
-  if (chr !~ /^chr/) chr="chr"chr;    # 统一 chr 前缀
+  id=$1; chr=$2; pos=$3;              # pos is 1-based
+  if (chr !~ /^chr/) chr="chr"chr;    # Normalize chr prefix
   start=pos-1; end=pos;
   key=chr"\t"start"\t"end"\t"id;
   if(!(key in seen)){
@@ -397,7 +401,7 @@ bedtools intersect -a hg38genes.bed -b 1000gsnv.sorted.bed -wa -wb \
 | awk 'BEGIN{OFS="\t"}
 {
   gene=$4; name=$5; strand=$6;
-  snv=$10;                      # 6列gene + 4列snv => snv_id 在第10列
+  snv=$10;                      # 6 gene cols + 4 snv cols => snv_id in col 10
   key = gene "|" name "|" strand "|" snv
   gkey = gene "|" name "|" strand
   if (!(key in seen)) {

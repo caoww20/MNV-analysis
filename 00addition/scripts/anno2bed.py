@@ -1,42 +1,44 @@
 """
-功能：批量把当前目录下的 hg38_*.txt 注释文件（列顺序：type chr start end ...）转为 BED4 (chr start-1 end type)，输出到 data/bed_output。
-用法：在包含 hg38_*.txt 的目录执行 python anno2bed.py；输出目录默认为 /home/caow/03mnv/analyse3/00addition/data/bed_output。
+Purpose: batch-convert hg38_*.txt annotation files (columns: type chr start end ...)
+to BED4 (chr start-1 end type) and write to data/bed_output.
+Usage: run python anno2bed.py in a directory containing hg38_*.txt;
+default output dir: /home/caow/03mnv/analyse3/00addition/data/bed_output.
 """
 
 import os
 import glob
 
-# 1. 获取所有以 hg38_ 开头的 txt 文件
+# 1. Get all txt files starting with hg38_
 files = glob.glob("hg38_*.txt")
 
-# 创建输出目录
+# Create output directory
 output_dir = "/home/caow/03mnv/analyse3/00addition/data/bed_output"
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
 for file in files:
-    # --- 文件名处理逻辑 ---
-    # 1. 去掉路径，只留文件名 (以防万一)
+    # --- File name processing ---
+    # 1. Strip path, keep filename only
     basename = os.path.basename(file)
     
-    # 2. 去掉 .txt 后缀
+    # 2. Remove .txt suffix
     name_core = basename.replace(".txt", "")
     
-    # 3. 去掉 hg38_ 前缀
+    # 3. Remove hg38_ prefix
     if name_core.startswith("hg38_"):
-        name_core = name_core.replace("hg38_", "", 1) # 只替换第一个
+        name_core = name_core.replace("hg38_", "", 1) # Replace first only
         
-    # 4. 去掉 _aj 后缀 (如果存在)
+    # 4. Remove _aj suffix if present
     if name_core.endswith("_aj"):
-        name_core = name_core[:-3] # 去掉最后3个字符 (_aj)
+        name_core = name_core[:-3] # Drop last 3 chars (_aj)
         
-    # 5. 拼接新文件名
+    # 5. Build new filename
     new_filename = name_core + ".bed"
     out_path = os.path.join(output_dir, new_filename)
     
-    print(f"转换: {file} -> {out_path}")
+    print(f"Convert: {file} -> {out_path}")
     
-    # --- 内容转换逻辑 (BED4 格式) ---
+    # --- Content conversion (BED4) ---
     with open(file, 'r') as f_in, open(out_path, 'w') as f_out:
         for line in f_in:
             line = line.strip()
@@ -44,7 +46,7 @@ for file in files:
             
             parts = line.split()
             
-            # 确保至少有4列 (Col1=Type, Col2=Chr, Col3=Start, Col4=End)
+            # Ensure at least 4 columns (Type, Chr, Start, End)
             if len(parts) >= 4:
                 type_name = parts[0]
                 chrom = parts[1]
@@ -52,13 +54,13 @@ for file in files:
                 end = parts[3]
                 
                 try:
-                    # 坐标转换: Start - 1
+                    # Coordinate conversion: Start - 1
                     start_0based = int(start) - 1
                     
-                    # 写入: Chr  Start-1  End  Type
+                    # Write: Chr  Start-1  End  Type
                     f_out.write(f"{chrom}\t{start_0based}\t{end}\t{type_name}\n")
                     
                 except ValueError:
-                    print(f"  [跳过非数字行] {line}")
+                    print(f"  [Skip non-numeric line] {line}")
 
-print(f"\n全部完成！请查看文件夹: {output_dir}")
+print(f"\nAll done! Output folder: {output_dir}")

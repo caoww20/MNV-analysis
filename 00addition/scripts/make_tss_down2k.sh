@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# 功能：从 GFF3 提取转录本 TSS 下游 2kb 区域，输出 BED6。
-# 用法：./make_tss_down2k.sh [GFF3] [OUT_BED] ；默认 GFF3=$HOME/01miRNASNP/gene/Homo_sapiens.GRCh38.110.gff3，输出 tss_downstream_2000.bed。
+# Purpose: extract 2 kb downstream of transcript TSS from GFF3 and output BED6.
+# Usage: ./make_tss_down2k.sh [GFF3] [OUT_BED]; default GFF3=$HOME/01miRNASNP/gene/Homo_sapiens.GRCh38.110.gff3, output tss_downstream_2000.bed.
 set -euo pipefail
 
 GFF3="${1:-$HOME/01miRNASNP/gene/Homo_sapiens.GRCh38.110.gff3}"
@@ -16,7 +16,7 @@ $0 ~ /^#/ { next }
   strand=$7
   attr=$9
 
-  # 解析 ID 或 Name（不用 match 的第三参数，兼容 mawk）
+  # Parse ID or Name (avoid match third-arg for mawk compatibility)
   name="."
   if (attr ~ /ID=/) {
     name=attr

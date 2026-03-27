@@ -1,6 +1,6 @@
-# 功能：汇总 MNV/SNV 区域分布、期望比率及多项下游分析的绘图脚本（含多段试验性代码）。
-# 用法：在对应工作目录下（见 setwd）准备好 01num、expected_by_type 等输入后 source 本脚本；其中部分段落依赖 mnv/TFBS/miRNA 等数据框已预载入 R 环境。
-# 各个数据集的区域分布情况
+# Purpose: plotting script for MNV/SNV region distributions, expected ratios, and downstream analyses (includes experimental blocks).
+# Usage: prepare inputs like 01num and expected_by_type in the working directory (see setwd), then source this script; some sections rely on preloaded mnv/TFBS/miRNA data frames.
+# Region distribution for each dataset
 setwd('/home/caow/03mnv/analyse3/04adjustError/01region')
 mythem=theme(panel.grid=element_blank(),
              plot.margin=unit(rep(2,4),'lines'),
@@ -25,7 +25,7 @@ mythem=theme(panel.grid=element_blank(),
   df$id<-1:nrow(df)
   
   
-  # 读取SNV数量
+  # Read SNV counts
   dfsnv<-cbind(fun1('01num/snv_1000G.region.counts.tsv'),fun1('01num/snv_GTEx.region.counts.tsv'),fun1('01num/snv_UKB50w.region.counts.tsv'),fun1('01num/snv_TCGA.region.counts.tsv'),fun1('01num/snv_UKB20w.region.counts.tsv'))
   dfsnv<-dfsnv[c(1:2,4,6,8,10)]
   colnames(dfsnv)<-c('type','1000G','GTEx','UKB50w','TCGA','UKB20w')  
@@ -52,23 +52,23 @@ mythem=theme(panel.grid=element_blank(),
   
 }
 
-# 读取gnomAD约束算出的各区域期望变异数
+# Read expected variants per region from gnomAD constraint
 expected_var <- read_tsv('/home/caow/03mnv/analyse3/00addition/data/expected_by_type.hg38.tsv')
-# 1. 确保 expected_var 的顺序与 df 完全一致
-# 使用 left_join 是最稳妥的方法，避免因 type 缺失或多余导致报错
+# 1. Ensure expected_var order matches df
+# left_join is safest to avoid errors from missing/extra types
 df_merge <- df %>%
   left_join(expected_var, by = "type")
 
-# 2. 定义需要参与计算的列（数据集列）
+# 2. Define columns to include in calculations (dataset columns)
 target_cols <- c("1000G", "GTEx", "UKB50w", "TCGA", "UKB20w")
 
-# 3. 执行相除计算
-# 我们创建一个新表来存储 ratio 结果
+# 3. Divide to compute ratios
+# Store results in a new table
 df_ratio <- df_merge
 
 df_ratio[target_cols] <- sweep(df_merge[target_cols], 1, df_merge$expected_sum, "/")
 
-# 4. 查看结果
+# 4. Inspect results
 print(head(df_ratio))
 df_ratio <- df_ratio %>% select(-8)
 df_ratio <- df_ratio[-15,]
@@ -83,7 +83,7 @@ ggplot(res, aes(x = id, y = value, color = variable)) +
   scale_color_manual(values = c("GnomAD"="#88c6e2","1000G" = "#d02f43", "GTEx" = "#e35e42", "UKB50w" = "#eb8e68", "TCGA"="#295683","UKB20w"="#438fa9"))
 
 
-# 绘制五条折线图
+# Plot five line charts
 p <- ggplot(res, aes(x = id, y = value, color = variable)) +
   geom_point(size=2) +
   geom_line(lwd=1) +
@@ -102,7 +102,7 @@ library(gridExtra)
 
 setwd('/home/caow/03mnv/analyse3/04adjustError/01region')
 
-# --- 1. 主题设置 (保持不变) ---
+# --- 1. Theme settings (unchanged) ---
 mythem <- theme(
   panel.grid = element_blank(),
   # plot.margin = unit(rep(2, 4), 'lines'),
@@ -114,90 +114,90 @@ mythem <- theme(
   axis.title.y = element_text(vjust = 1, size = 12, face = "bold", color = 'black')
 )
 
-# --- 2. 数据读取 ---
+# --- 2. Data loading ---
 fun1 <- function(f) {
   df <- read.table(f, header = F, stringsAsFactors = F, sep = '\t')
   colnames(df) <- c('type', 'num')
   return(df)
 }
 
-# 读取 MNV 原始数量 (注意：这里先保留原始计数，不要覆盖)
+# Read raw MNV counts (keep original counts; do not overwrite)
 df_mnv <- cbind(fun1('01num/1000G.txt'), fun1('01num/GTEx.txt'), fun1('01num/UKB50w.txt'), fun1('01num/TCGA.txt'), fun1('01num/UKB20w.txt'))
 df_mnv <- df_mnv[c(1:2, 4, 6, 8, 10)]
 colnames(df_mnv) <- c('type', '1000G', 'GTEx', 'UKB50w', 'TCGA', 'UKB20w')
 df_mnv$id <- 1:nrow(df_mnv)
 
-# 读取 SNV 原始数量
+# Read raw SNV counts
 df_snv <- cbind(fun1('01num/snv_1000G.region.counts.tsv'), fun1('01num/snv_GTEx.region.counts.tsv'), fun1('01num/snv_UKB50w.region.counts.tsv'), fun1('01num/snv_TCGA.region.counts.tsv'), fun1('01num/snv_UKB20w.region.counts.tsv'))
 df_snv <- df_snv[c(1:2, 4, 6, 8, 10)]
 colnames(df_snv) <- c('type', '1000G', 'GTEx', 'UKB50w', 'TCGA', 'UKB20w')
 df_snv$id <- 1:nrow(df_snv)
 
-# --- 3. 计算 Ratio 数据框 ---
-# 复制一份用于存储比率
+# --- 3. Compute ratio data frame ---
+# Copy for ratio storage
 df_ratio <- df_mnv
-# 计算每个区域的 Ratio = MNV / SNV
+# Compute ratio per region = MNV / SNV
 df_ratio[, 2:6] <- df_mnv[, 2:6] / df_snv[, 2:6]
 
 
 
-# --- 4. 定义绘图函数 (包含新的基准线计算逻辑) ---
+# --- 4. Define plotting function (includes new baseline logic) ---
 plot_single_dataset <- function(data_ratio, counts_mnv, counts_snv, col_name, plot_title, line_color) {
   
-  # 提取绘图用的比率数据
+  # Extract ratio data for plotting
   plot_data <- data.frame(
     id = data_ratio$id,
     type = data_ratio$type,
     value = data_ratio[[col_name]]
   )
   
-  # --- 关键修改：计算全局基准线 (Global Baseline) ---
-  # 定义：该数据集中所有 MNV 之和 / 所有 SNV 之和
+  # --- Key change: compute global baseline ---
+  # Definition: sum(MNV) / sum(SNV) in this dataset
   # total_mnv <- sum(counts_mnv[[col_name]], na.rm = TRUE)
   # total_snv <- sum(counts_snv[[col_name]], na.rm = TRUE)
   # baseline_value <- 0.02269008830602263
   # 
   baseline_value <- mean(plot_data$value, na.rm = TRUE)
   
-  print(paste("Baseline for", col_name, ":", baseline_value)) # 打印出来检查一下
+  print(paste("Baseline for", col_name, ":", baseline_value)) # Print for quick check
   
   p <- ggplot(plot_data, aes(x = id, y = value)) +
-    # 1. 柱状图 (带透明度)
+    # 1. Bars (with transparency)
     geom_bar(stat = "identity", fill = line_color, alpha = 0.3, width = 0.6) +
     
-    # 2. 折线和点
+    # 2. Line and points
     geom_line(color = line_color, lwd = 1) +
     geom_point(size = 2, color = line_color) +
     
-    # 3. 基准虚线 (Global Rate)
+    # 3. Baseline dashed line (Global Rate)
     geom_hline(yintercept = baseline_value, linetype = "dashed", color = "grey30", size = 0.8) +
     
-    # 4. 坐标轴设置
+    # 4. Axis settings
     labs(title = plot_title, y = 'MNV/SNV Ratio',x=NULL) +
     scale_x_continuous(breaks = c(1:nrow(data_ratio)), labels = gsub("_", " ", data_ratio$type)) +
     
-    # 5. 主题
+    # 5. Theme
     theme_bw() + mythem
   
   return(p)
 }
 
-# --- 5. 执行绘图 ---
+# --- 5. Run plots ---
 
-# 删掉TSS
+# Remove TSS
 df_ratio <- df_ratio[-16,]
 
-# 画 1000G
+# Plot 1000G
 p_1000G <- plot_single_dataset(
   data_ratio = df_ratio,
-  counts_mnv = df_mnv,   # 传入原始计数用于算总和
-  counts_snv = df_snv,   # 传入原始计数用于算总和
+  counts_mnv = df_mnv,   # Use raw counts for totals
+  counts_snv = df_snv,   # Use raw counts for totals
   col_name = "1000G", 
   plot_title = "1000G", 
   line_color = "#d02f43"
 )
 
-# 画 GTEx
+# Plot GTEx
 p_GTEx <- plot_single_dataset(
   data_ratio = df_ratio,
   counts_mnv = df_mnv, 
@@ -207,10 +207,10 @@ p_GTEx <- plot_single_dataset(
   line_color = "#e35e42"
 )
 
-# --- 6. 组合输出 ---
+# --- 6. Combined output ---
 grid.arrange(p_1000G, p_GTEx, nrow = 1)
 
-# 方法B: 分别保存为 PDF
+# Method B: Save as PDFs separately
 # ggsave("plot_1000G_ratio.pdf", p_1000G, width = 5, height = 4)
 # ggsave("plot_GTEx_ratio.pdf", p_GTEx, width = 5, height = 4)
 
@@ -237,33 +237,33 @@ mnvgtex <- mnvgtex %>% filter(annotation!='miRNA') %>% rbind(mnvmirgtex)
 
 setwd('/home/caow/03mnv/analyse3/05ncRNA/01pre_miRNA')
 library(tidyverse)
-## 读入数据
+## Read data
 {
   mnv_diff<-read_tsv('02RNAFold/mnv/mnv_diff.res',col_names = F)
   snv_diff<-read_tsv('02RNAFold/snv/snv_diff.res',col_names = F)
   mnv_snv_diff<-read_tsv('02RNAFold/merge_res.txt',col_names = F)
 }
 
-# 2. 数据处理 (支持任意数量的 SNV 位点)
+# 2. Data processing (supports any number of SNV sites)
 plot_data <- mnv_snv_diff %>%
-  rowwise() %>% # 开启“按行处理”模式
+  rowwise() %>% # Enable row-wise processing
   mutate(
-    # 核心逻辑：
-    # 1. str_split(X4, ","): 按逗号分割字符串
-    # 2. unlist: 将分割后的列表解开成向量
-    # 3. as.numeric: 转为数字
-    # 4. sum: 求和
+    # Core logic:
+    # 1. str_split(X4, ","): split by comma
+    # 2. unlist: flatten to a vector
+    # 3. as.numeric: convert to numeric
+    # 4. sum: sum values
     sum_snv_effects = sum(as.numeric(unlist(str_split(X4, ",")))),
     
-    # Y 轴：MNV effect
+    # Y axis: MNV effect
     mnv_effect = X3
   ) %>%
-  ungroup() # 处理完后取消按行模式，提高后续运行效率
+  ungroup() # Exit row-wise mode for better performance
 plot_data <- plot_data %>%
   mutate(
     diff = mnv_effect - sum_snv_effects,
-    # 定义差异类型：增强(Synergistic) vs 减弱(Antagonistic) vs 相似
-    # 这里阈值设为0.5，可视具体数据分布调整
+    # Define difference types: Enhanced vs Diminished vs Similar
+    # Threshold set to 0.5; adjust based on data distribution
     interaction_type = case_when(
       diff > 0.5 ~ "MNV > Sum (Enhanced)",
       diff < -0.5 ~ "MNV < Sum (Diminished)",
@@ -271,10 +271,10 @@ plot_data <- plot_data %>%
     )
   )
 ggplot(plot_data, aes(x = sum_snv_effects, y = diff)) +
-  # 添加水平参考线 y=0
+  # Add horizontal reference line at y=0
   geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
   
-  # 绘制“棒棒糖图” (Lollipop plot) 来强调偏离程度
+  # Draw a lollipop plot to highlight deviations
   geom_segment(aes(xend = sum_snv_effects, yend = 0, color = diff), alpha = 0.5) +
   geom_point(aes(color = diff), size = 2) +
   
@@ -287,7 +287,7 @@ ggplot(plot_data, aes(x = sum_snv_effects, y = diff)) +
   ) +
   theme_bw()+mythem
 
-# 3. 定义你的主题 (保持不变)
+# 3. Define theme (unchanged)
 mythem <- theme(
   panel.grid = element_blank(),
   panel.border = element_rect(fill = NA, color = "black", size = 1, linetype = "solid"),
@@ -298,15 +298,15 @@ mythem <- theme(
   axis.title.y = element_text(vjust = 1, size = 12, face = "bold", color = 'black')
 )
 library(ggpubr)
-# 4. 绘图
+# 4. Plot
 p <- ggplot(plot_data, aes(x = sum_snv_effects, y = mnv_effect)) +
   geom_point(color = "#377EB8", alpha = 0.7, size = 1.5) + 
   
-  # 添加对角线 (y=x)
+  # Add diagonal line (y = x)
   geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "#E41A1C", size = 0.8) +
   
-  # 设置坐标轴标签
-  # 注意：这里把标签改成更通用的写法，不再特指 SNV1+SNV2
+  # Set axis labels
+  # Note: use a more general label, not specific to SNV1+SNV2
   labs(
     x = expression(bold(Sum~of~individual~SNV~effects~(Sigma*Delta*MFE[SNV]))),
     y = expression(bold(MNV~effect~(Delta*MFE[MNV])))
@@ -316,30 +316,30 @@ p <- ggplot(plot_data, aes(x = sum_snv_effects, y = mnv_effect)) +
   mythem
 p_with_cor <- p + 
   stat_cor(
-    method = "pearson",      # 使用皮尔逊相关系数
-    label.x.npc = 0.05,      # 标签水平位置 (0-1之间，0.05表示靠左)
-    label.y.npc = 0.95,      # 标签垂直位置 (0-1之间，0.95表示靠上)
-    # 或者你可以使用具体坐标，例如: label.x = -10, label.y = 10
-    size = 4,                # 字体大小
-    fontface = "bold"        # 字体加粗
+    method = "pearson",      # Use Pearson correlation
+    label.x.npc = 0.05,      # Label x position (0-1, 0.05 = left)
+    label.y.npc = 0.95,      # Label y position (0-1, 0.95 = top)
+    # Or use explicit coordinates, e.g.: label.x = -10, label.y = 10
+    size = 4,                # Font size
+    fontface = "bold"        # Bold font
   )
-# 5. 显示并保存
+# 5. Display and save
 # ggsave("MNV_vs_MultiSNVs_scatter.pdf", p, width = 5, height = 5)
 
 threshold_value <- 1.0 
 
-# 2. 计算偏差和比例
+# 2. Compute deviation and proportion
 stats_result <- plot_data %>%
   mutate(
-    # 计算实际值与预测值的差 (Residuals)
+    # Difference between observed and predicted (residuals)
     deviation = mnv_effect - sum_snv_effects,
     
-    # 取绝对值，判断是否超过阈值
-    # abs() 是为了不管它是变得更稳定还是更不稳定，只要偏离够大就算
+    # Use absolute value to test the threshold
+    # abs() treats stabilization/destabilization equally; magnitude matters
     is_non_additive = abs(deviation) > threshold_value
   )
 
-# 3. 统计具体数值
+# 3. Summarize counts
 total_count <- nrow(stats_result)
 non_additive_count <- sum(stats_result$is_non_additive)
 percentage <- round((non_additive_count / total_count) * 100, 2)
@@ -351,12 +351,12 @@ mnv1000g_anno <- mnv1000g %>% inner_join(mnvcategories,by='MNVid')
 mnvgtex_anno <- mnvgtex %>% inner_join(mnvcategories,by='MNVid')
 
 custom_colors <- c(
-  "snv_event" = "#A83232",   # 深砖红色
-  "one_step"  = "#E8A03D",   # 橙色
-  "repeat"    = "#2C4B8E"    # 深蓝色
+  "snv_event" = "#A83232",   # Dark brick red
+  "one_step"  = "#E8A03D",   # Orange
+  "repeat"    = "#2C4B8E"    # Dark blue
 )
 
-# B. 定义标签文字 (图2中的文字)
+# B. Define label text (for figure 2)
 custom_labels <- c(
   "snv_event" = "SNV event",
   "one_step"  = "One-step",
@@ -364,45 +364,45 @@ custom_labels <- c(
 )
 
 my_order <- c('UTR5','exon','splice','intron','UTR3','lncRNA','miRNA','circRNA','piRNA','ATAC','conserved_element','enhancer','miRBS','TFBS','intergenic')
-# 2. 数据清洗与转换 (核心步骤)
+# 2. Data cleaning and transformation (core steps)
 plot_data <- mnv1000g_anno %>%
-  # 第一步：将含有分号的 annotation 拆分成多行
-  # 例如 "lncRNA;piRNA" 会变成两行，分别对应 lncRNA 和 piRNA
+  # Step 1: Split semicolon-separated annotation into rows
+  # For example "lncRNA;piRNA" becomes two rows: lncRNA and piRNA
   separate_rows(annotation, sep = ";") %>%
   
-  # 第二步：将三列分类转换为长格式
-  # 我们只需要值为 1 的行，因为那代表该 MNV 属于该类别
+  # Step 2: Pivot the three category columns to long format
+  # Keep rows with value 1, indicating membership in the category
   pivot_longer(
     cols = c(snv_event, one_step, `repeat`), 
     names_to = "category", 
     values_to = "is_present"
   ) %>%
   
-  # 过滤掉值为0的行（即不属于该类别的行）
+  # Filter out rows with value 0 (not in the category)
   filter(is_present == 1)
 
 plot_data <- plot_data %>%
   mutate(annotation = factor(annotation, levels = my_order))
 
 my_order <- c('UTR5','exon','splice','intron','UTR3','lncRNA','miRNA','circRNA','piRNA','ATAC','conserved_element','enhancer','miRBS','TFBS','intergenic','TSS')
-# 2. 数据清洗与转换 (核心步骤)
+# 2. Data cleaning and transformation (core steps)
 plot_data <- mnv1000g_anno %>%
-  # 第一步：将含有分号的 annotation 拆分成多行
-  # 例如 "lncRNA;piRNA" 会变成两行，分别对应 lncRNA 和 piRNA
+  # Step 1: Split semicolon-separated annotation into rows
+  # For example "lncRNA;piRNA" becomes two rows: lncRNA and piRNA
   separate_rows(annotation, sep = ";") %>%
   
-  # 第二步：将三列分类转换为长格式
-  # 我们只需要值为 1 的行，因为那代表该 MNV 属于该类别
+  # Step 2: Pivot the three category columns to long format
+  # Keep rows with value 1, indicating membership in the category
   pivot_longer(
     cols = c(snv_event, one_step, `repeat`), 
     names_to = "category", 
     values_to = "is_present"
   ) %>%
   
-  # 过滤掉值为0的行（即不属于该类别的行）
+  # Filter out rows with value 0 (not in the category)
   filter(is_present == 1)
 
-# 比较了不同类别MNV在各个基因组功能区域的比例
+# Compare proportions of MNV categories across genomic functional regions
 plot_data <- plot_data %>%
   mutate(annotation = factor(annotation, levels = my_order))
 
@@ -410,19 +410,19 @@ mnvtypenum <- plot_data %>% group_by(annotation,category) %>% summarise(n=n())
 colnames(mnvtypenum) <- c('type','category','1000G')
 
 plot_data1_gtex <- mnvgtex_anno %>% distinct() %>% 
-  # 第一步：将含有分号的 annotation 拆分成多行
-  # 例如 "lncRNA;piRNA" 会变成两行，分别对应 lncRNA 和 piRNA
+  # Step 1: Split semicolon-separated annotation into rows
+  # For example "lncRNA;piRNA" becomes two rows: lncRNA and piRNA
   separate_rows(annotation, sep = ";") %>%
   
-  # 第二步：将三列分类转换为长格式
-  # 我们只需要值为 1 的行，因为那代表该 MNV 属于该类别
+  # Step 2: Pivot the three category columns to long format
+  # Keep rows with value 1, indicating membership in the category
   pivot_longer(
     cols = c(snv_event, one_step, `repeat`), 
     names_to = "category", 
     values_to = "is_present"
   ) %>%
   
-  # 过滤掉值为0的行（即不属于该类别的行）
+  # Filter out rows with value 0 (not in the category)
   filter(is_present == 1)
 
 plot_data1_gtex <- plot_data1_gtex %>%
@@ -437,14 +437,14 @@ mnvtypenum2 <-  mnvtypenum %>% filter(category=='repeat') %>% select(-2)
 mnvtypenum3 <-  mnvtypenum %>% filter(category=='snv_event') %>% select(-2)
 
 
-# 读取 SNV 原始数量
+# Read raw SNV counts
 df_snv <- cbind(fun1('01num/snv_1000G.region.counts.tsv'), fun1('01num/snv_GTEx.region.counts.tsv'), fun1('01num/snv_UKB50w.region.counts.tsv'), fun1('01num/snv_TCGA.region.counts.tsv'), fun1('01num/snv_UKB20w.region.counts.tsv'))
 df_snv <- df_snv[c(1:2, 4, 6, 8, 10)]
 colnames(df_snv) <- c('type', '1000G', 'GTEx', 'UKB50w', 'TCGA', 'UKB20w')
 df_snv$id <- 1:nrow(df_snv)
 
-# --- 3. 计算 Ratio 数据框 ---
-# 复制一份用于存储比率
+# --- 3. Compute ratio data frames ---
+# Copy for storing ratios
 # df_mnv <- df_mnv[-17,]
 
 df_ratio1 <- df_mnv
@@ -453,62 +453,62 @@ df_ratio3 <- df_mnv
 
 # df_snv <- df_snv[-16,]
 
-# 计算每个区域的 Ratio = MNV / SNV
+# Ratio per region = MNV / SNV
 df_ratio1[, 2:3] <- mnvtypenum1[-17, 2:3] / df_snv[, 2:3]
 df_ratio2[, 2:3] <- mnvtypenum2[-17, 2:3] / df_snv[, 2:3]
 df_ratio3[, 2:3] <- mnvtypenum3[-17, 2:3] / df_snv[, 2:3]
 
 plot_single_dataset1 <- function(data_ratio, counts_mnv, counts_snv, col_name, plot_title, line_color, baseline) {
   
-  # 提取绘图用的比率数据
+  # Extract ratio data for plotting
   plot_data <- data.frame(
     id = data_ratio$id,
     type = data_ratio$type,
     value = data_ratio[[col_name]]
   )
   
-  # --- 关键修改：计算全局基准线 (Global Baseline) ---
-  # 定义：该数据集中所有 MNV 之和 / 所有 SNV 之和
+  # --- Key change: compute global baseline ---
+  # Definition: sum of all MNV / sum of all SNV in this dataset
   # total_mnv <- sum(counts_mnv[[col_name]], na.rm = TRUE)
   # total_snv <- sum(counts_snv[[col_name]], na.rm = TRUE)
   # baseline_value <- 0.02269008830602263
   # 
   baseline_value <- baseline
   
-  print(paste("Baseline for", col_name, ":", baseline_value)) # 打印出来检查一下
+  print(paste("Baseline for", col_name, ":", baseline_value)) # Print to verify
   
   p <- ggplot(plot_data, aes(x = id, y = value)) +
-    # 1. 柱状图 (带透明度)
+    # 1. Bar chart (with transparency)
     geom_bar(stat = "identity", fill = line_color, alpha = 0.3, width = 0.6) +
     
-    # 2. 折线和点
+    # 2. Line and points
     geom_line(color = line_color, lwd = 1) +
     geom_point(size = 2, color = line_color) +
     
-    # 3. 基准虚线 (Global Rate)
+    # 3. Baseline dashed line (global rate)
     geom_hline(yintercept = baseline_value, linetype = "dashed", color = "grey30", size = 0.8) +
     
-    # 4. 坐标轴设置
+    # 4. Axis settings
     labs(title = plot_title, x = 'Genomic Region', y = 'MNV-to-SNV Ratio') +
     scale_x_continuous(breaks = c(1:nrow(data_ratio)), labels = data_ratio$type) +
     
-    # 5. 主题
+    # 5. Theme
     theme_bw() + mythem
   
   return(p)
 }
 
-# 画 1000G
+# Plot 1000G
 p_1000G1 <- plot_single_dataset1(
   data_ratio = df_ratio1,
-  counts_mnv = mnvtypenum1,   # 传入原始计数用于算总和
-  counts_snv = df_snv,   # 传入原始计数用于算总和
+  counts_mnv = mnvtypenum1,   # Pass raw counts for totals
+  counts_snv = df_snv,   # Pass raw counts for totals
   col_name = "1000G", 
   plot_title = "1000G Dataset", 
   line_color = "#d02f43",baseline = 0.041212660155921
 )
 
-# 画 GTEx
+# Plot GTEx
 p_GTEx1 <- plot_single_dataset1(
   data_ratio = df_ratio1,
   counts_mnv = mnvtypenum1, 
@@ -520,14 +520,14 @@ p_GTEx1 <- plot_single_dataset1(
 
 p_1000G2 <- plot_single_dataset1(
   data_ratio = df_ratio2,
-  counts_mnv = mnvtypenum1,   # 传入原始计数用于算总和
-  counts_snv = df_snv,   # 传入原始计数用于算总和
+  counts_mnv = mnvtypenum1,   # Pass raw counts for totals
+  counts_snv = df_snv,   # Pass raw counts for totals
   col_name = "1000G", 
   plot_title = "1000G Dataset", 
   line_color = "#d02f43",baseline = 0.041212660155921
 )
 
-# 画 GTEx
+# Plot GTEx
 p_GTEx2 <- plot_single_dataset1(
   data_ratio = df_ratio2,
   counts_mnv = mnvtypenum1, 
@@ -539,14 +539,14 @@ p_GTEx2 <- plot_single_dataset1(
 
 p_1000G3 <- plot_single_dataset1(
   data_ratio = df_ratio3,
-  counts_mnv = mnvtypenum1,   # 传入原始计数用于算总和
-  counts_snv = df_snv,   # 传入原始计数用于算总和
+  counts_mnv = mnvtypenum1,   # Pass raw counts for totals
+  counts_snv = df_snv,   # Pass raw counts for totals
   col_name = "1000G", 
   plot_title = "1000G Dataset", 
   line_color = "#d02f43",baseline = 0.041212660155921
 )
 
-# 画 GTEx
+# Plot GTEx
 p_GTEx3 <- plot_single_dataset1(
   data_ratio = df_ratio3,
   counts_mnv = mnvtypenum1, 
@@ -558,12 +558,12 @@ p_GTEx3 <- plot_single_dataset1(
 library(grid)
 library(gridExtra)
 
-# 定义每一行的标题样式
+# Define title style for each row
 title_style <- function(label) {
   textGrob(label, gp = gpar(fontsize = 12, fontface = "bold"))
 }
 
-# 第一步：将每一行与其对应的机制标签组合
+# Step 1: Combine each row with its mechanism label
 # Row 1: SNV event
 row1 <- arrangeGrob(p_1000G1, p_GTEx1, ncol = 2, 
                     top = title_style("pol-zeta-mediated one-step"))
@@ -576,35 +576,35 @@ row2 <- arrangeGrob(p_1000G2, p_GTEx2, ncol = 2,
 row3 <- arrangeGrob(p_1000G3, p_GTEx3, ncol = 2, 
                     top = title_style("SNV event"))
 
-# 第二步：将三行垂直排列
+# Step 2: Stack the three rows vertically
 grid.arrange(row1, row2, row3, nrow = 3)
 
 
 prepare_plot_data <- function(df1, df2, df3, dataset_col) {
-  # 提取 Pol-zeta
+  # Extract Pol-zeta
   d1 <- df1[, c("id", "type", dataset_col)]
   colnames(d1)[3] <- "value"
   d1$Type <- "Pol-zeta-mediated one-step"
   
-  # 提取 Repeat slippage
+  # Extract Repeat slippage
   d2 <- df2[, c("id", "type", dataset_col)]
   colnames(d2)[3] <- "value"
   d2$Type <- "Repeat slippage"
   
-  # 提取 SNV event
+  # Extract SNV event
   d3 <- df3[, c("id", "type", dataset_col)]
   colnames(d3)[3] <- "value"
   d3$Type <- "SNV event"
   
-  # 合并数据
+  # Combine data
   plot_data <- rbind(d1, d2, d3)
   
-  # 确保 X 轴顺序：将 type 转为因子，顺序按 id 排序
-  # 假设 id 是 1, 2, 3... 对应原本的行顺序
+  # Ensure x-axis order: convert type to factor ordered by id
+  # Assume id 1, 2, 3... matches the original row order
   order_levels <- unique(d1$type[order(d1$id)])
   plot_data$type <- factor(plot_data$type, levels = order_levels)
   
-  # 确保 Mechanism 的图例顺序
+  # Ensure legend order for Mechanism
   plot_data$Type <- factor(plot_data$Type, 
                            levels = c("SNV event", "Pol-zeta-mediated one-step", "Repeat slippage"))
   
@@ -612,89 +612,89 @@ prepare_plot_data <- function(df1, df2, df3, dataset_col) {
 }
 
 # =======================================================
-# 2. 定义绘图函数 (多机制合一)
+# 2. Define plotting function (multi-mechanism)
 # =======================================================
 plot_lines_final <- function(plot_data, plot_title, baseline_value, show_legend = TRUE, show_x_title = TRUE) {
   
   print(paste("Drawing:", plot_title, "| Baseline:", baseline_value)) 
   
-  # 基础绘图对象
+  # Base plot object
   p <- ggplot(plot_data, aes(x = type, y = value, color = Type, group = Type)) +
     
-    # 1. 基准线
+    # 1. Baseline
     # geom_hline(yintercept = baseline_value, linetype = "dashed", color = "grey40", size = 0.8) +
     
-    # 2. 折线和点
+    # 2. Lines and points
     geom_line(lwd=1, alpha = 0.9) + 
     geom_point(size = 2) +
     
-    # 3. 颜色设置
+    # 3. Color settings
     scale_color_manual(values = c("SNV event" = "#A83232", 
                                   "Pol-zeta-mediated one-step" = "#E8A03D", 
                                   "Repeat slippage" = "#2C4B8E")) +
     scale_x_discrete(labels = function(x) gsub("_", " ", x)) +
-    # 4. 标题与轴标签控制
+    # 4. Title and axis label control
     labs(title = plot_title, 
-         # 根据参数决定是否显示 X 轴标题
+         # Show X-axis title based on parameter
          x = if(show_x_title) 'Genomic Region' else NULL, 
          y = 'MNV/SNV Ratio') +
     
     
-    # 5. 主题设置
+    # 5. Theme
     theme_bw() + mythem+theme(legend.position = if(show_legend) "top" else "none")
   # theme(
-  #   # --- 关键修改：标题居中 ---
+  #   # --- Key change: center title ---
   #   plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
   #   
-  #   # 坐标轴文字
+  #   # Axis text
   #   axis.text.x = element_text(angle = 45, hjust = 1, color = "black", size = 10),
   #   axis.title.y = element_text(size = 12, face = "bold"),
   #   
-  #   # --- 关键修改：图例位置控制 ---
-  #   # 如果 show_legend 为 TRUE 放顶部，否则隐藏
+  #   # --- Key change: legend position control ---
+  #   # If show_legend is TRUE, top; otherwise hide
   #   legend.position = if(show_legend) "top" else "none",
   #   legend.title = element_blank(),
   #   legend.text = element_text(size = 11, face = "bold"),
   #   
   #   panel.grid.minor = element_blank()
-  #   # + mythem (如果需要)
+  #   # + mythem (if needed)
   # )
   
   return(p)
 }
 
 # =======================================================
-# 3. 执行绘图
+# 3. Execute plotting
 # =======================================================
 
-# 删掉TSS
+# Remove TSS
 df_ratio1 <- df_ratio1[-16,]
 df_ratio2 <- df_ratio2[-16,]
 df_ratio3 <- df_ratio3[-16,]
 
 
-# --- 准备 1000G 数据 ---
-# 注意：这里假设 df_ratio1, df_ratio2, df_ratio3 是你已经算好的三个dataframe
+# --- Prepare 1000G data ---
+# Note: df_ratio1, df_ratio2, df_ratio3 are the three data frames already computed
 data_1000G <- prepare_plot_data(df_ratio1, df_ratio2, df_ratio3, "1000G")
 
-# --- 准备 GTEx 数据 ---
+# --- Prepare GTEx data ---
 data_GTEx <- prepare_plot_data(df_ratio1, df_ratio2, df_ratio3, "GTEx")
 
 library(ggpubr) # install.packages("ggpubr")
 
-# 1. 确保两个图的代码里 show_legend = TRUE 
-# (ggpubr 会自动提取其中一个，并隐藏其他的)
+# 1. Ensure show_legend = TRUE in both plots
+# (ggpubr will extract one legend and hide the others)
 p_1000G_with_leg <- plot_lines_final(data_1000G, "1000G", 0.0412, show_legend = TRUE, show_x_title = FALSE)
 p_GTEx_with_leg  <- plot_lines_final(data_GTEx,  "GTEx",  0.0278, show_legend = TRUE, show_x_title = FALSE)
 
-# 2. 一键排列 + 共享图例
+# 2. Arrange + share legend
 p2 <- ggarrange(
   p_1000G_with_leg, 
   p_GTEx_with_leg, 
   ncol = 2, 
   nrow = 1,
-  common.legend = TRUE, # 开启共享图例功能
-  legend = "bottom"     # 图例放在最下面
+  common.legend = TRUE, # Enable shared legend
+  legend = "bottom"     # Place legend at the bottom
 )
 p1 <- grid.arrange(p_1000G, p_GTEx, nrow = 1)
 grid.arrange(p1, p2, ncol = 1)
@@ -702,8 +702,8 @@ grid.arrange(p1, p2, ncol = 1)
 library(cowplot)
 library(ggpubr)
 
-# --- 第一步：构建下方带有共享图例的图 (Row 2) ---
-# 使用 ggarrange 提取共享图例
+# --- Step 1: Build bottom row with shared legend (Row 2) ---
+# Use ggarrange to extract the shared legend
 p2 <- ggarrange(
   p_1000G_with_leg, 
   p_GTEx_with_leg, 
@@ -713,85 +713,85 @@ p2 <- ggarrange(
   legend = "bottom"
 )
 
-# --- 第二步：构建上方的图 (Row 1) ---
-# 这里也建议用 plot_grid 替代 grid.arrange，因为 plot_grid 返回的是 ggplot 对象，更稳定
+# --- Step 2: Build top row (Row 1) ---
+# Prefer plot_grid over grid.arrange since it returns a ggplot object and is more stable
 p1 <- plot_grid(
   p_1000G, 
   p_GTEx, 
   ncol = 2, 
-  align = "h" # 水平对齐
+  align = "h" # Horizontal alignment
 )
 
-# --- 第三步：最终组合与间距调整 ---
+# --- Step 3: Final combine and spacing adjustments ---
 final_plot <- plot_grid(
   p1, p2, 
   ncol = 1, 
   
-  # 1. 【关键】对齐上下两行的坐标轴
+  # 1. Key: align axes between rows
   align = "v", 
   axis = "lr",
   
-  # 2. 【关键】调整上下高度比例
-  # 下面的图带图例和X轴标题，所以给它多一点空间 (例如 1:1.2)
+  # 2. Key: adjust relative heights
+  # Bottom plot has legend and X title, so give it more space (e.g., 1:1.2)
   rel_heights = c(1, 1.1),
   
-  # 3. 【关键】增加子图之间的物理间距 (可选)
-  # scale < 1 会让图片稍微缩小，从而在图片周围产生留白(间距)
+  # 3. Key: add physical spacing between subplots (optional)
+  # scale < 1 slightly shrinks plots to create padding
   scale = c(1, 1) 
 )
 
 final_plot
 
-# --- 画图 ---
-# 这里的 baseline 如果你想加，可以传参，或者在函数里写死
-# 1000G 图 (Baseline: 0.0412...)
+# --- Plot ---
+# If you want a baseline, pass it in or hardcode it in the function
+# 1000G plot (Baseline: 0.0412...)
 p_top <- plot_lines_final(
   plot_data = data_1000G, 
   plot_title = "1000G Dataset", 
   baseline_value = 0.041212660155921,
-  show_legend = TRUE,     # 显示图例
-  show_x_title = TRUE    # 隐藏 X 轴标题
+  show_legend = TRUE,     # Show legend
+  show_x_title = TRUE    # Hide X-axis title
 )
 
-# --- 下面的图 (GTEx) ---
-# 去掉图例 (show_legend = FALSE) 因为上面已经有了
-# 保留 X 轴标题 (show_x_title = TRUE)
+# --- Bottom plot (GTEx) ---
+# Remove legend (show_legend = FALSE) because the top plot already has it
+# Keep X-axis title (show_x_title = TRUE)
 p_bottom <- plot_lines_final(
   plot_data = data_GTEx, 
   plot_title = "GTEx Dataset", 
   baseline_value = 0.027862315966804,
-  show_legend = FALSE,    # 隐藏图例
-  show_x_title = TRUE     # 显示 X 轴标题
+  show_legend = FALSE,    # Hide legend
+  show_x_title = TRUE     # Show X-axis title
 )
 
 grid.arrange(p_top, p_bottom, nrow = 1)
 
 
-library(cowplot) # 强烈建议使用这个包来拼图
+library(cowplot) # Strongly recommended for arranging plots
 
 plot_grid(p_top, p_bottom, 
           ncol = 1, 
-          align = "h", # 垂直对齐坐标轴
+          align = "h", # Align axes vertically
           rel_heights = c(1.2, 1.1))
 
 
-# 3. 绘图 (百分比堆叠图)
+# 3. Plot (percent stacked bar)
 ggplot(plot_data, aes(x = annotation, fill = category)) +
-  # position = "fill" 是关键，它会自动计算百分比并堆叠
+  # position = "fill" is key; it computes percentages and stacks
   geom_bar(position = "stack", width = 0.7) + 
   
-  # 添加百分比标签 (可选，为了更清晰)
+  # Add percent labels (optional, for clarity)
   geom_text(stat = "count", 
             aes(label = scales::percent(after_stat(count) / tapply(after_stat(count), after_stat(x), sum)[after_stat(x)], accuracy = 1)),
             position = position_fill(vjust = 0.5), 
             size = 3, color = "black") +
   
-  # 调整坐标轴和配色
-  scale_y_continuous(labels = scales::percent) + # Y轴显示为百分比
+  # Adjust axes and colors
+  scale_y_continuous(labels = scales::percent) + # Y axis as percent
   scale_fill_manual(
-    values = custom_colors, # 应用我们定义的颜色向量
-    labels = custom_labels, # 应用我们定义的标签向量
-    name = NULL             # 去掉图例标题，让图例更干净 (或者写 name = "Variant Type")
+    values = custom_colors, # Use the defined color vector
+    labels = custom_labels, # Use the defined label vector
+    name = NULL             # Remove legend title (or set name = "Variant Type")
   ) +
   labs(
     title = "Proportion of MNV Categories by Annotation Region",
@@ -800,16 +800,16 @@ ggplot(plot_data, aes(x = annotation, fill = category)) +
     fill = "MNV Type"
   ) +
   theme_bw() + mythem+
-  # 如果横坐标标签太长，可以让它们倾斜
+  # If x-axis labels are too long, rotate them
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
 
-# 如果你想看具体的计数而不是比例，只需将 position = "fill" 改为 position = "stack"
+# If you want counts instead of proportions, change position = "fill" to "stack"
 
 
 mnv1000g_pattern <- read_tsv('~/03mnv/analyse3/00addition/data/mnv1000g_pattern',col_names = F)
 colnames(mnv1000g_pattern) <- c('MNVid','ref','alt','dis')
 
-# 创建 MNV 分类数据框
+# Create an MNV classification data frame
 mnv_data <- read.csv(text = "
 refs,alts,class
 AA,CC,Tv
@@ -892,10 +892,10 @@ TA,CG,Ti
 TA,GC,Tv
 ", strip.white = TRUE, stringsAsFactors = FALSE)
 
-# 添加 mutation 列 (格式如 AA->CC)
+# Add mutation column (format AA->CC)
 mnv_data$mutation <- paste(mnv_data$refs, "->", mnv_data$alts, sep="")
 
-# 调整列顺序，使其与图片更一致
+# Reorder columns to better match the figure
 mnv_data <- mnv_data[, c("mutation", "refs", "alts", "class")]
 
 # --- build ref_dict ---
@@ -923,7 +923,7 @@ for (i in ref_dict) {
 }
 variant_keys <- unique(variant_keys)
 
-# (可选) 如果你也要 r / r1 / r_all 的结构，这里可以建 list：
+# (Optional) If you also want r / r1 / r_all structures, build lists here:
 # r  <- setNames(replicate(length(variant_keys), integer(3203), simplify = FALSE), variant_keys)
 # r1 <- setNames(replicate(length(variant_keys), integer(3203), simplify = FALSE), variant_keys)
 
@@ -947,7 +947,7 @@ for (i in variant_keys) {
   rc <- reverse_complement_variant(i)
   
   if (!identical(i, rc)) {
-    # 比较 i 与 rc 在位置 1,3,5,7 的碱基（等价于 Python 的 range(0,8,2) 对字符串取 i[k]）
+    # Compare bases at positions 1,3,5,7 between i and rc (like Python range(0,8,2))
     decided <- FALSE
     for (pos in c(1, 3, 5, 7)) {
       bi <- substr(i, pos, pos)
@@ -965,31 +965,31 @@ for (i in variant_keys) {
         next
       }
     }
-    # 理论上一定会 decided；若完全相等则其实 i==rc，前面已排除
+    # This should always decide; if equal then i==rc, already excluded
   } else {
     mapdict[i] <- i
   }
 }
 
-# mapdict 就是最终结果
-# 示例：查看前几个映射
+# mapdict is the final result
+# Example: view the first few mappings
 head(mapdict)
 
 mnv1000g_2joint_pattern <- mnv1000g %>% inner_join(mnv1000g_pattern,by='MNVid') %>% filter(nchar(ref)==3&dis==1)
 
-# --- 第一步：构建全量对称查找表 ---
-# 您的 mapdict 是 {smaller: larger} 或 {self: self}
-# 我们需要一个表能把 larger 映射回 smaller，且 smaller 映射到自身
+# --- Step 1: Build the full symmetric lookup table ---
+# Your mapdict is {smaller: larger} or {self: self}
+# We need a table mapping larger back to smaller, and smaller to itself
 smaller_keys <- names(mapdict)
 larger_values <- unname(mapdict)
 
-# 构建一个全量查找向量：包含所有可能的原始模式到代表性模式的映射
+# Build a full lookup vector mapping all patterns to representative patterns
 full_lookup_vec <- setNames(smaller_keys, smaller_keys) # smaller -> smaller
 full_lookup_vec <- c(full_lookup_vec, setNames(smaller_keys, larger_values)) # larger -> smaller
-# 去重（防止自互补模式重复添加）
+# De-duplicate (avoid adding self-complements twice)
 full_lookup_vec <- full_lookup_vec[!duplicated(names(full_lookup_vec))]
 
-# 给mnv1000g添加prompoter和TSS
+# Add promoter and TSS to mnv1000g
 promotermnv1000G <- read_tsv('/home/caow/03mnv/analyse3/00addition/data/anno/promotermnv1000G',col_names = F) %>% 
   mutate(X2='Promoter')
 promotermnvGTEx <- read_tsv('/home/caow/03mnv/analyse3/00addition/data/anno/promotermnvGTEx',col_names = F) %>% 
@@ -1005,25 +1005,25 @@ colnames(tssGTEx) <- colnames(mnv1000g)
 mnv1000g <- rbind(mnv1000g,promotermnv1000G,tss1000g)
 mnvgtex <- rbind(mnvgtex,promotermnvGTEx,tssGTEx)
 
-# --- 第二步：处理您的 mnv1000g 数据 ---
+# --- Step 2: Process mnv1000g data ---
 mnv1000g_classified <- mnv1000g %>% 
   inner_join(mnv1000g_pattern, by = 'MNVid') %>% 
-  # 筛选 2-joint 且相邻的 MNV
+  # Filter 2-joint adjacent MNVs
   filter(nchar(ref) == 3 & dis == 1) %>% 
   mutate(
-    # 1. 组合成 mapdict 的原始格式，例如 "C,G:T,A"
+    # 1. Build raw mapdict format, e.g. "C,G:T,A"
     raw_key = paste0(ref, ":", alt)
   ) %>% 
   mutate(
-    # 2. 通过查找表直接获取代表性模式 (Representative Pattern)
-    # 这步非常快，直接向量化替换
+    # 2. Use lookup to get representative pattern
+    # This is fast via vectorized replacement
     rep_key = full_lookup_vec[raw_key]
   ) %>% 
   mutate(
-    # 3. 将 "A,A:C,C" 转换为 "AA->CC" 格式以匹配 mnv_data
+    # 3. Convert "A,A:C,C" to "AA->CC" to match mnv_data
     match_pattern = str_replace_all(rep_key, ",", "") %>% str_replace(":", "->")
   ) %>% 
-  # 4. 关联 mnv_data 获取 class
+  # 4. Join mnv_data to get class
   left_join(mnv_data, by = c("match_pattern" = "mutation"))
 
 mnvgtex_pattern <- read_tsv('~/03mnv/analyse3/00addition/data/mnvGTEx_pattern',col_names = F)
@@ -1032,26 +1032,26 @@ mnvgtex_2joint_pattern <- mnvgtex %>% inner_join(mnvgtex_pattern,by='MNVid') %>%
 
 mnvgtex_classified <- mnvgtex %>% 
   inner_join(mnvgtex_pattern, by = 'MNVid') %>% 
-  # 筛选 2-joint 且相邻的 MNV
+  # Filter 2-joint adjacent MNVs
   filter(nchar(ref) == 3 & dis == 1) %>% 
   mutate(
-    # 1. 组合成 mapdict 的原始格式，例如 "C,G:T,A"
+    # 1. Build raw mapdict format, e.g. "C,G:T,A"
     raw_key = paste0(ref, ":", alt)
   ) %>% 
   mutate(
-    # 2. 通过查找表直接获取代表性模式 (Representative Pattern)
-    # 这步非常快，直接向量化替换
+    # 2. Use lookup to get representative pattern
+    # This is fast via vectorized replacement
     rep_key = full_lookup_vec[raw_key]
   ) %>% 
   mutate(
-    # 3. 将 "A,A:C,C" 转换为 "AA->CC" 格式以匹配 mnv_data
+    # 3. Convert "A,A:C,C" to "AA->CC" to match mnv_data
     match_pattern = str_replace_all(rep_key, ",", "") %>% str_replace(":", "->")
   ) %>% 
-  # 4. 关联 mnv_data 获取 class
+  # 4. Join mnv_data to get class
   left_join(mnv_data, by = c("match_pattern" = "mutation"))
 
-# --- 第三步：查看统计结果 ---
-# 统计各分类的数量
+# --- Step 3: Review summary ---
+# Count per class
 class_summary <- mnv1000g_classified %>%
   group_by(class) %>%
   summarise(count = n()) %>%
@@ -1059,22 +1059,22 @@ class_summary <- mnv1000g_classified %>%
 
 print(class_summary)
 
-# 1. 定义突变模式列表 (根据你的要求)
+# 1. Define mutation pattern lists (per your criteria)
 cpg_list     <- c("GA->AG", "CC->TT", "AC->GT", "CA->TG")
 polzeta_list <- c("GA->TT", "GC->AA")
 rep_list     <- c("AC->CA", "CA->AC", "AT->TA", "TA->AT", "AA->TT", "AA->CC")
 tv_list      <- c("TA->CG", "CG->AT", "AT->CG", "CG->GC", "GC->CG", "CG->AC")
 
-# 2. 定义区域顺序
+# 2. Define region order
 region_order <- c("enhancer", "Promoter", "TSS", "UTR5", "exon", "intron", "UTR3")
 
-# 3. 数据处理
+# 3. Data processing
 plot_df <- mnv1000g_classified %>%
-  # 处理多重注释：按分号展开
+  # Handle multiple annotations: split by semicolon
   separate_rows(annotation, sep = ";") %>%
   
-  # --- 核心修改：基于具体的 Pattern 映射主要突变机制 ---
-  # 注意：这里使用的是最终匹配模式 (final_pattern 或 match_pattern)，格式为 "AA->CC"
+  # --- Core change: map mechanisms based on specific pattern ---
+  # Note: using final match pattern (final_pattern or match_pattern), "AA->CC"
   mutate(mechanism = case_when(
     match_pattern %in% cpg_list     ~ "Ti at CpG",
     match_pattern %in% polzeta_list ~ "Pol-zeta error",
@@ -1082,10 +1082,10 @@ plot_df <- mnv1000g_classified %>%
     match_pattern %in% tv_list      ~ "Tv combination"
   )) %>%
   
-  # 过滤目标区域
+  # Filter target regions
   filter(annotation %in% region_order) %>%
   
-  # 按区域和机制统计比例
+  # Summarize fractions by region and mechanism
   group_by(annotation, mechanism) %>%
   summarise(count = n(), .groups = 'drop') %>%
   
@@ -1093,20 +1093,20 @@ plot_df <- mnv1000g_classified %>%
   mutate(fraction = count / sum(count)) %>%
   ungroup() %>%
   
-  # 设置因子顺序
+  # Set factor order
   mutate(annotation = factor(annotation, levels = region_order)) %>% filter(!is.na(mechanism))
 
-# 4. 绘图
+# 4. Plot
 ggplot(plot_df, aes(x = annotation, y = fraction, color = mechanism, group = mechanism)) +
   geom_line(size = 0.8, alpha = 0.6) +
   geom_point(size = 2.5) +
   
-  # 配色方案 (保持与图片一致)
+  # Color scheme (match figure)
   scale_color_manual(values = c(
-    "Ti at CpG"          = "#56B4E9", # 浅蓝
-    "Pol-zeta error"     = "#9970AB", # 紫色
-    "Slippage at repeat" = "#8C510A", # 棕色
-    "Tv combination"     = "#D6604D" # 红色
+    "Ti at CpG"          = "#56B4E9", # Light blue
+    "Pol-zeta error"     = "#9970AB", # Purple
+    "Slippage at repeat" = "#8C510A", # Brown
+    "Tv combination"     = "#D6604D" # Red
   )) +
   
   labs(
@@ -1125,11 +1125,11 @@ ggplot(plot_df, aes(x = annotation, y = fraction, color = mechanism, group = mec
   )
 
 plot_df1 <- mnvgtex_classified %>%
-  # 处理多重注释：按分号展开
+  # Handle multiple annotations: split by semicolon
   separate_rows(annotation, sep = ";") %>%
   
-  # --- 核心修改：基于具体的 Pattern 映射主要突变机制 ---
-  # 注意：这里使用的是最终匹配模式 (final_pattern 或 match_pattern)，格式为 "AA->CC"
+  # --- Core change: map mechanisms based on specific pattern ---
+  # Note: using final match pattern (final_pattern or match_pattern), "AA->CC"
   mutate(mechanism = case_when(
     match_pattern %in% cpg_list     ~ "Ti at CpG",
     match_pattern %in% polzeta_list ~ "Pol-zeta error",
@@ -1137,10 +1137,10 @@ plot_df1 <- mnvgtex_classified %>%
     match_pattern %in% tv_list      ~ "Tv combination"
   )) %>%
   
-  # 过滤目标区域
+  # Filter target regions
   filter(annotation %in% region_order) %>%
   
-  # 按区域和机制统计比例
+  # Summarize fractions by region and mechanism
   group_by(annotation, mechanism) %>%
   summarise(count = n(), .groups = 'drop') %>%
   
@@ -1148,20 +1148,20 @@ plot_df1 <- mnvgtex_classified %>%
   mutate(fraction = count / sum(count)) %>%
   ungroup() %>%
   
-  # 设置因子顺序
+  # Set factor order
   mutate(annotation = factor(annotation, levels = region_order)) %>% filter(!is.na(mechanism))
 
-# 4. 绘图
+# 4. Plot
 ggplot(plot_df1, aes(x = annotation, y = fraction, color = mechanism, group = mechanism)) +
   geom_line(size = 0.8, alpha = 0.6) +
   geom_point(size = 2.5) +
   
-  # 配色方案 (保持与图片一致)
+  # Color scheme (match figure)
   scale_color_manual(values = c(
-    "Ti at CpG"          = "#56B4E9", # 浅蓝
-    "Pol-zeta error"     = "#9970AB", # 紫色
-    "Slippage at repeat" = "#8C510A", # 棕色
-    "Tv combination"     = "#D6604D" # 红色
+    "Ti at CpG"          = "#56B4E9", # Light blue
+    "Pol-zeta error"     = "#9970AB", # Purple
+    "Slippage at repeat" = "#8C510A", # Brown
+    "Tv combination"     = "#D6604D" # Red
   )) +
   
   labs(
@@ -1200,29 +1200,29 @@ mnv1000ggtex <-  rbind(mnv1000ggtex,utr5mnv)
 
 mnvmerge_classified <- mnv1000ggtex %>% 
   inner_join(mnvmerge_pattern, by = 'MNVid') %>% 
-  # 筛选 2-joint 且相邻的 MNV
+  # Filter 2-joint adjacent MNVs
   filter(nchar(ref) == 3 & dis == 1) %>% 
   mutate(
-    # 1. 组合成 mapdict 的原始格式，例如 "C,G:T,A"
+    # 1. Build raw mapdict format, e.g. "C,G:T,A"
     raw_key = paste0(ref, ":", alt)
   ) %>% 
   mutate(
-    # 2. 通过查找表直接获取代表性模式 (Representative Pattern)
-    # 这步非常快，直接向量化替换
+    # 2. Use lookup to get representative pattern
+    # This is fast via vectorized replacement
     rep_key = full_lookup_vec[raw_key]
   ) %>% 
   mutate(
-    # 3. 将 "A,A:C,C" 转换为 "AA->CC" 格式以匹配 mnv_data
+    # 3. Convert "A,A:C,C" to "AA->CC" to match mnv_data
     match_pattern = str_replace_all(rep_key, ",", "") %>% str_replace(":", "->")
   ) %>% 
-  # 4. 关联 mnv_data 获取 class
+  # 4. Join mnv_data to get class
   left_join(mnv_data, by = c("match_pattern" = "mutation"))
 plot_df2 <- mnvmerge_classified %>%
-  # 处理多重注释：按分号展开
+  # Handle multiple annotations: split by semicolon
   separate_rows(annotation, sep = ";") %>% distinct() %>% 
   
-  # --- 核心修改：基于具体的 Pattern 映射主要突变机制 ---
-  # 注意：这里使用的是最终匹配模式 (final_pattern 或 match_pattern)，格式为 "AA->CC"
+  # --- Core change: map mechanisms based on specific pattern ---
+  # Note: using final match pattern (final_pattern or match_pattern), "AA->CC"
   mutate(mechanism = case_when(
     match_pattern %in% cpg_list     ~ "Ti at CpG",
     match_pattern %in% polzeta_list ~ "Pol-zeta error",
@@ -1230,10 +1230,10 @@ plot_df2 <- mnvmerge_classified %>%
     match_pattern %in% tv_list      ~ "Tv combination"
   )) %>%
   
-  # 过滤目标区域
+  # Filter target regions
   filter(annotation %in% region_order) %>%
   
-  # 按区域和机制统计比例
+  # Summarize fractions by region and mechanism
   group_by(annotation, mechanism) %>%
   summarise(count = n(), .groups = 'drop') %>%
   
@@ -1241,20 +1241,20 @@ plot_df2 <- mnvmerge_classified %>%
   mutate(fraction = count / sum(count)) %>%
   ungroup() %>%
   
-  # 设置因子顺序
+  # Set factor order
   mutate(annotation = factor(annotation, levels = region_order)) %>% filter(!is.na(mechanism))
 
-# 4. 绘图
+# 4. Plot
 ggplot(plot_df2, aes(x = annotation, y = fraction, color = mechanism, group = mechanism)) +
   geom_line(size = 0.8, alpha = 0.6) +
   geom_point(size = 2.5) +
   
-  # 配色方案 (保持与图片一致)
+  # Color scheme (match figure)
   scale_color_manual(values = c(
-    "Ti at CpG"          = "#56B4E9", # 浅蓝
-    "Pol-zeta error"     = "#9970AB", # 紫色
-    "Slippage at repeat" = "#8C510A", # 棕色
-    "Tv combination"     = "#D6604D" # 红色
+    "Ti at CpG"          = "#56B4E9", # Light blue
+    "Pol-zeta error"     = "#9970AB", # Purple
+    "Slippage at repeat" = "#8C510A", # Brown
+    "Tv combination"     = "#D6604D" # Red
   )) +
   
   labs(
@@ -1274,25 +1274,25 @@ ggplot(plot_df2, aes(x = annotation, y = fraction, color = mechanism, group = me
 
 
 
-# --- 1. 准备绘图数据 ---
-# 假设 mnv1000g_classified 中已有 'mechanism' 和判定 one-step 的逻辑
-# 我们需要计算每个 pattern 的 one-step 比例
+# --- 1. Prepare plotting data ---
+# Assume mnv1000g_classified already has 'mechanism' and one-step logic
+# We need the one-step fraction for each pattern
 
 plot_pattern_df <- mnv1000g_classified %>%
-  # 判定 one-step (此处需根据您原始数据中的 AC 列计算，示例逻辑如下)
+  # Determine one-step (based on AC columns; example logic below)
   # mutate(is_onestep = ifelse(AC_mnv / AC_snv_min > 0.9 & (AC_snv_max - AC_snv_min)/AC_snv_min < 0.1, TRUE, FALSE)) %>%
   
   group_by(mutation_pattern, mechanism) %>%
   summarise(
-    onestep_fraction = mean(is_onestep, na.rm = TRUE), # 计算该模式下 one-step 的比例
+    onestep_fraction = mean(is_onestep, na.rm = TRUE), # One-step fraction for this pattern
     total_count = n(),
     .groups = 'drop'
   ) %>%
-  # 筛选样本量足够的模式进行展示，或选择图片中指定的代表性模式
+  # Filter patterns with enough samples or representative ones
   filter(total_count > 100) %>% 
   arrange(onestep_fraction)
 
-# 添加一个 "All" 的全局平均值作为对照
+# Add a global "All" average as a reference
 all_avg <- data.frame(
   mutation_pattern = "All",
   mechanism = "All",
@@ -1303,16 +1303,16 @@ all_avg <- data.frame(
 plot_final <- bind_rows(plot_pattern_df, all_avg) %>%
   mutate(mutation_pattern = factor(mutation_pattern, levels = unique(mutation_pattern)))
 
-# --- 2. 绘制散点图 ---
+# --- 2. Draw scatter plot ---
 ggplot(plot_final, aes(x = mutation_pattern, y = onestep_fraction, color = mechanism)) +
   geom_point(size = 3) +
-  # 设定颜色方案与 image_7f8ccf.png 一致
+  # Match color scheme to image_7f8ccf.png
   scale_color_manual(values = c(
     "Ti at CpG" = "#56B4E9", 
     "Pol-zeta error" = "#9970AB", 
     "Slippage at repeat" = "#8C510A", 
     "Tv combination" = "#D6604D"  )) +
-  # 设置 Y 轴范围
+  # Set y-axis range
   scale_y_continuous(limits = c(0, 1.0), breaks = seq(0, 1, 0.2)) +
   labs(
     x = "MNV pattern",
@@ -1332,34 +1332,34 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 
-# 读取你的 TFBS 预测结果 (来自 image_824ae6.png 所示文件)
-# 注意：确保 matrix_id 列（如 MA0073.1）与 JASPAR 表一致
+# Read TFBS prediction results (from image_824ae6.png)
+# Note: ensure matrix_id (e.g., MA0073.1) matches the JASPAR table
 tfbs_res <- read.table("/home/caow/03mnv/analyse3/06TFBS/04res_mRNA/jaspar_pair.txt", header = FALSE, stringsAsFactors = FALSE)
-# 根据图片内容，假设第一列是 matrix_id，倒数第四列是 Effect (Gain/Loss)
+# Based on the figure, assume col 1 is matrix_id and the 4th from last is Effect (Gain/Loss)
 colnames(tfbs_res)[c(1, 15)] <- c("matrix_id", "effect")
 
-# 读取 JASPAR 家族信息表
+# Read JASPAR family metadata
 jaspar_meta <- read.table("/home/caow/03mnv/analyse3/00addition/data/ultimate_metadata_table_CORE.tsv", header = TRUE, sep = "\t", quote = "", stringsAsFactors = FALSE)
 
-# ref中潜在的motif结合
+# Potential motif binding in ref
 refback <- read_table('~/mnv2tfbs/data1118/hg38/all_motif_counts.txt',col_names = F)
 colnames(refback) <- c('num','matrix_id')
 
 classback <- jaspar_meta %>% select(matrix_id,class) %>% inner_join(refback,by= "matrix_id") %>% 
   group_by(class) %>% summarise(all=sum(num))
 
-# 1. 关联 JASPAR 的 class 信息
+# 1. Join JASPAR class info
 merged_data <- tfbs_res %>%
   inner_join(jaspar_meta %>% select(matrix_id, class, family), by = "matrix_id")
 
-# 2. 统计每个家族 (class) 中 Gain 和 Loss 的数量
+# 2. Count Gain and Loss per class
 class_stats <- merged_data %>%
   group_by(class, effect) %>%
   summarise(count = n(), .groups = 'drop') %>%
   pivot_wider(names_from = effect, values_from = count, values_fill = 0)
 
-# 3. 计算发生率 (Rate)
-# 注意：发生率通常需要分母。如果你的分母是“该家族总预测次数”，逻辑如下：
+# 3. Compute rates
+# Note: rate needs a denominator; if it's total predictions per class:
 class_stats <- class_stats %>%
   mutate(Total = Gain + Loss,
          Gain_Rate = Gain / Total,
@@ -1367,59 +1367,59 @@ class_stats <- class_stats %>%
   arrange(desc(Total)) %>% inner_join(classback,by='class')
 
 tf_data <- class_stats %>% filter(class!='Uncharacterized')
-# --- 1. 数据处理与归一化 ---
+# --- 1. Data processing and normalization ---
 plot_data <- tf_data %>%
-  # 计算全局基线 (Global Baseline Rate)
+  # Compute global baseline rate
   mutate(
     global_gain_rate = sum(Gain) / sum(all),
     global_loss_rate = sum(Loss) / sum(all)
   ) %>%
   rowwise() %>%
   mutate(
-    # 计算每个家族的原始发生率
+    # Compute raw rates per class
     raw_rate_gain = Gain / all,
     raw_rate_loss = Loss / all,
     
-    # 计算富集倍数 (O/E Ratio): 家族发生率 / 全局平均发生率
-    # >1 代表该家族倾向于发生此类事件；<1 代表倾向于不发生
+    # Compute enrichment ratio (O/E): class rate / global average
+    # >1 means enriched; <1 means depleted
     Enrichment_Gain = raw_rate_gain / global_gain_rate,
     Enrichment_Loss = raw_rate_loss / global_loss_rate
   ) %>%
   ungroup() %>%
-  # 转换为长格式以便绘图
+  # Convert to long format for plotting
   select(class, Enrichment_Gain, Enrichment_Loss) %>%
   pivot_longer(cols = c(Enrichment_Gain, Enrichment_Loss), 
                names_to = "Type", values_to = "Enrichment") %>%
   mutate(
     Type = ifelse(Type == "Enrichment_Gain", "Gain (Creating)", "Loss (Disrupting)"),
-    # 按照 Gain 的富集程度对家族进行排序
+    # Order classes by Gain enrichment
     class = factor(class, levels = tf_data$class[order(tf_data$Gain / tf_data$all)])
   )
 
-# 重新计算，把gain和loss合并
-# --- 1. 数据处理与归一化 ---
+# Recalculate, combining gain and loss
+# --- 1. Data processing and normalization ---
 plot_data <- tf_data %>%
-  # 计算全局基线 (Global Baseline Rate)
+  # Compute global baseline rate
   mutate(
     global_rate = sum(Total) / sum(all),
   ) %>%
   rowwise() %>%
   mutate(
-    # 计算每个家族的原始发生率
+    # Compute raw rates per class
     raw_rate = Total / all,
     
-    # 计算富集倍数 (O/E Ratio): 家族发生率 / 全局平均发生率
-    # >1 代表该家族倾向于发生此类事件；<1 代表倾向于不发生
+    # Compute enrichment ratio (O/E): class rate / global average
+    # >1 means enriched; <1 means depleted
     Enrichment_change = raw_rate / global_rate,
   ) %>%
   ungroup() %>%
-  # 转换为长格式以便绘图
+  # Convert to long format for plotting
   select(class, Enrichment_change) %>%
   pivot_longer(cols = c(Enrichment_change), 
                names_to = "Type", values_to = "Enrichment") %>%
   mutate(
     Type = 'Disrupted',
-    # 按照 Gain 的富集程度对家族进行排序
+    # Order classes by Gain enrichment
     class = factor(class, levels = tf_data$class[order(tf_data$Total / tf_data$all)])
   )
 mythem <- theme(
@@ -1447,30 +1447,30 @@ ggplot(plot_data, aes(x = log2FC, y = reorder(class, log2FC))) +
                      name = "Status") +
   
   labs(
-    x = "Log2 (Enrichment Ratio)", # 记得改坐标轴标签
+    x = "Log2 (Enrichment Ratio)", # Remember to update axis label
     y = NULL
   ) +
   theme_bw()+mythem+theme(legend.position = "none")
 
-# 1. 根据 log2FC 计算出 class 的排序顺序 (从低到高或从高到低)
-# 这里我们按照 log2FC 升序排列，这样在图中就是从下往上画
+# 1. Compute class order by log2FC (low to high)
+# Using ascending log2FC draws from bottom to top
 class_order <- plot_data$class[order(plot_data$log2FC)]
 
-# 2. 将两个数据框的 class 都指定为具有相同 Level 的因子
+# 2. Set class as a factor with the same levels in both data frames
 plot_data$class <- factor(plot_data$class, levels = class_order)
 
 gc_data <- merged_data  %>% filter(class!='Uncharacterized') %>% 
-  # --- 步骤 A: 计算 GC 含量 ---
-  # 使用 stringr::str_count 计算 G 和 C 的数量，除以序列总长度
+  # --- Step A: Compute GC content ---
+  # Use stringr::str_count to count G/C and divide by sequence length
   mutate(gc_content = str_count(V14, "[GC]") / nchar(V14))
 
-# 注意：这里假设 gc_data 是你的GC含量数据框
-# 确保 gc_data$class 里的名称和 plot_data$class 完全一致
+# Note: assume gc_data is your GC-content data frame
+# Ensure gc_data$class matches plot_data$class exactly
 gc_data$class <- factor(gc_data$class, levels = class_order) 
 
 
 # =======================================================
-# 步骤 2: 绘制左侧棒棒糖图 (你的原代码微调)
+# Step 2: Draw left lollipop plot (light tweaks)
 # =======================================================
 p1 <- ggplot(plot_data, aes(x = log2FC, y = class)) +
   geom_vline(xintercept = 0, linetype = "dashed") +
@@ -1484,71 +1484,71 @@ p1 <- ggplot(plot_data, aes(x = log2FC, y = class)) +
     y = NULL
   ) +
   theme_bw() + 
-  mythem + # 如果你有自定义主题请取消注释
+  mythem + # Uncomment if you have a custom theme
   theme(legend.position = "none")
 
 
 # =======================================================
-# 步骤 3: 绘制右侧 Boxplot
+# Step 3: Draw right boxplot
 # =======================================================
 p2 <- ggplot(gc_data, aes(x = gc_content, y = class)) +
-  geom_boxplot(outlier.shape = NA, alpha = 0.9, fill = "#E8F1F2") + # 箱体颜色可自选
+  geom_boxplot(outlier.shape = NA, alpha = 0.9, fill = "#E8F1F2") + # Box fill color is optional
   labs(
     x = "GC Content", 
     y = NULL
   ) +
   theme_bw() + 
-  mythem + # 保持主题一致
+  mythem + # Keep theme consistent
   theme(
-    # 关键：隐藏Y轴的文字、刻度和标题，因为左图已经有了
+    # Key: hide y-axis labels/ticks/title since the left plot has them
     axis.text.y = element_blank(),
     axis.ticks.y = element_blank(),
     axis.title.y = element_blank(),
-    panel.grid.major.y = element_blank() # 可选：为了美观可以去掉横向网格
+    panel.grid.major.y = element_blank() # Optional: remove horizontal gridlines
   )
 
 
 
 # =======================================================
-# 步骤 4: 拼接图形
+# Step 4: Combine plots
 # =======================================================
-# 使用 patchwork 进行拼接
-# widths 参数控制两个图的宽度比例，例如 c(1.5, 1) 表示左图宽一点
-# 1. 修改左图 p1：去掉右边距 (r = 0)
+# Use patchwork for combining
+# widths controls the width ratio (e.g., c(1.5, 1) makes left wider)
+# 1. Modify left plot p1: remove right margin (r = 0)
 # t=top, r=right, b=bottom, l=left
 p1 <- p1 + theme(plot.margin = margin(t = 5.5, r = 0, b = 5.5, l = 5.5, unit = "pt"))
 
-# 2. 修改右图 p2：去掉左边距 (l = 0)
+# 2. Modify right plot p2: remove left margin (l = 0)
 p2 <- p2 + theme(plot.margin = margin(t = 5.5, r = 5.5, b = 5.5, l = 0, unit = "pt"))
 
-# 3. 拼接
+# 3. Combine
 combined_plot <- p1 + p2 + plot_layout(widths = c(1.5, 1.3))
 
-# 1. 合并两个数据框，确保 class 一一对应
-# inner_join 会自动根据 class 列对齐数据
+# 1. Merge two data frames to align classes
+# inner_join aligns rows by class
 correlation_data <- plot_data %>%
   select(class, log2FC) %>%
   inner_join(avg_gc_data, by = "class")
-# 计算 Spearman 相关性
+# Compute Spearman correlation
 res <- cor.test(correlation_data$log2FC, 
                 correlation_data$Mean_GC, 
                 method = "spearman")
 
-# 打印完整结果
+# Print full results
 print(res)
 
-# 提取关键指标以便后续使用
-rho_value <- round(res$estimate, 3) # 相关系数 rho
-p_value   <- formatC(res$p.value, format = "e", digits = 2) # P值 (科学计数法)
+# Extract key metrics for later use
+rho_value <- round(res$estimate, 3) # Correlation coefficient (rho)
+p_value   <- formatC(res$p.value, format = "e", digits = 2) # P-value (scientific notation)
 
-# 输出一句话结果
+# Output a one-line result
 paste0("Spearman Rho = ", rho_value, ", P-value = ", p_value)
 
 p_corr <- ggplot(correlation_data, aes(x = log2FC, y = Mean_GC)) +
   geom_point(size = 3, alpha = 0.7, color = "#2C3E50") +
-  geom_smooth(method = "lm", color = "red", se = FALSE, linetype = "dashed") + # 添加拟合线
+  geom_smooth(method = "lm", color = "red", se = FALSE, linetype = "dashed") + # Add fitted line
   
-  # 自动添加相关系数和P值标签
+  # Auto-add correlation and P-value labels
   stat_cor(method = "spearman", label.x.npc = "left", label.y.npc = "top") +
   
   labs(
@@ -1558,46 +1558,46 @@ p_corr <- ggplot(correlation_data, aes(x = log2FC, y = Mean_GC)) +
   theme_bw()+mythem
 avg_gc_data <- gc_data %>%
   group_by(class) %>%
-  summarise(Mean_GC = mean(gc_content, na.rm = TRUE)) # 计算均值
+  summarise(Mean_GC = mean(gc_content, na.rm = TRUE)) # Compute mean
 
-# 关键：确保右图数据的 class 也是同样的因子顺序
+# Key: ensure right-plot classes use the same factor order
 avg_gc_data$class <- factor(avg_gc_data$class, levels = class_order)
 p2 <- ggplot(avg_gc_data, aes(x = Mean_GC, y = class)) +
-  geom_col(width = 0.6, fill = "#7F8C8D", alpha = 0.8) + # 使用中性灰色，宽度调细一点更精致
+  geom_col(width = 0.6, fill = "#7F8C8D", alpha = 0.8) + # Neutral gray, slightly thinner bars
   
-  # 如果想在柱子旁边显示具体数值，可以加上下面这行：
+  # If you want values beside bars, add this:
   # geom_text(aes(label = round(Mean_GC, 2)), hjust = -0.2, size = 3) +
   
-  scale_x_continuous(expand = expansion(mult = c(0, 0.1))) + # 让柱子紧贴Y轴，右边留点空隙
+  scale_x_continuous(expand = expansion(mult = c(0, 0.1))) + # Keep bars near y-axis with right padding
   labs(x = "Average GC Content", y = NULL) +
   theme_bw() +
   theme(
-    # 关键：隐藏 Y 轴所有元素，实现无缝拼接
+    # Key: hide all y-axis elements for seamless join
     axis.text.y = element_blank(),
     axis.ticks.y = element_blank(),
     axis.title.y = element_blank(),
-    panel.grid.major.y = element_blank(), # 去掉横向网格让画面更干净
-    plot.margin = margin(l = 0) # 去掉左边距，让两个图靠得更近
+    panel.grid.major.y = element_blank(), # Remove horizontal gridlines
+    plot.margin = margin(l = 0) # Remove left margin to bring plots closer
   )
 
 
 # =======================================================
-# 步骤 4: 拼接
+# Step 4: Combine
 # =======================================================
-# 调整 widths 比例，通常 Enrichment 图为主，GC 图为辅，可以设为 2:1
+# Adjust widths; typically Enrichment is primary and GC is secondary (e.g., 2:1)
 combined_plot <- p1 + p2 + plot_layout(widths = c(1.8, 1))
-# --- 2. 绘制棒棒糖图 (Lollipop Chart) ---
+# --- 2. Draw lollipop chart ---
 ggplot(plot_data, aes(x = Enrichment, y = class, color = Type)) +
-  # 添加基准线 x=1 (代表平均水平)
+  # Add baseline at x=1 (average)
   geom_vline(xintercept = 1, linetype = "dashed", color = "grey50") +
   
-  # 绘制连接线
+  # Draw connecting lines
   geom_line(aes(group = class), color = "grey80", size = 0.5) +
   
-  # 绘制点
+  # Draw points
   geom_point(size = 3.5) +
   
-  # 配色 (Gain用红色系，Loss用蓝色系，符合常规直觉)
+  # Colors (Gain in red, Loss in blue)
   scale_color_manual(values = c("Gain (Creating)" = "#D6604D", "Loss (Disrupting)" = "#4393C3")) +
   
   labs(
@@ -1610,17 +1610,17 @@ ggplot(plot_data, aes(x = Enrichment, y = class, color = Type)) +
   
   theme_bw() +mythem
 
-# 准备绘图数据（长格式）
+# Prepare plotting data (long format)
 plot_data <- class_stats %>%
   select(class, Gain, Loss) %>%
   pivot_longer(cols = c(Gain, Loss), names_to = "Effect", values_to = "Count")
 
 
 
-# 绘制堆叠柱状图显示不同 TF Class 的受影响程度
+# Stacked bar plot showing impact across TF classes
 ggplot(plot_data, aes(x = reorder(class, Count), y = Count, fill = Effect)) +
   geom_bar(stat = "identity") +
-  coord_flip() + # 横向显示，方便阅读较长的家族名称
+  coord_flip() + # Horizontal for long class names
   scale_fill_manual(values = c("Gain" = "#D6604D", "Loss" = "#438fa9")) +
   labs(title = "Impact of MNVs on different TF Classes",
        x = "TF Class (JASPAR)",
@@ -1629,18 +1629,18 @@ ggplot(plot_data, aes(x = reorder(class, Count), y = Count, fill = Effect)) +
 
 
 
-# 绘制figure-r4
+# Draw figure r4
 plot_data <- patterndf %>%
   mutate(
-    # 将 "T,A->G,C" 替换为 "TA->GC" (即删除逗号)
+    # Replace "T,A->G,C" with "TA->GC" (remove commas)
     type_label = str_replace_all(type, ",", ""), 
-    # 可选：让横坐标按照数值大小排序，而不是字母顺序
+    # Optional: order x-axis by values instead of alphabetically
     type_label = fct_inorder(type_label)
   )
 ggplot(plot_data, aes(x = type_label, y = number)) +
   geom_col(fill = "steelblue", width = 0.7) +
   
-  # 设置 Y 轴为 10 的次幂格式
+  # Set y-axis to powers of 10
   scale_y_log10(
     breaks = trans_breaks("log10", function(x) 10^x),
     labels = trans_format("log10", math_format(10^.x))

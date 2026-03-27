@@ -1,12 +1,12 @@
 import sys
 import re
 
-# 新用法：
+# New usage:
 #   python 002getSummary.py <snv_file> <annotation_dir/> <out_res>
 #
-# snv_file: 每行至少包含一个 SNV 主键，如 "13:16000187:C:T"
-# annotation_dir: 包含 gene.txt / lnc.txt / pre_miRNA.txt / circ.txt / piR.txt / atac.txt / CE.txt / enhancer.txt / miRBS.txt / TFBS.txt
-# out_res: 输出统计结果
+# snv_file: each line contains at least one SNV key, e.g. "13:16000187:C:T"
+# annotation_dir: contains gene.txt / lnc.txt / pre_miRNA.txt / circ.txt / piR.txt / atac.txt / CE.txt / enhancer.txt / miRBS.txt / TFBS.txt
+# out_res: output stats
 
 snv_file = sys.argv[1]
 url = sys.argv[2]
@@ -15,21 +15,21 @@ res = sys.argv[3]
 if not url.endswith("/"):
     url += "/"
 
-# 匹配常见 SNV key：chr:pos:ref:alt（chr允许 1-22,X,Y,MT 或带 chr 前缀）
+# Match common SNV key: chr:pos:ref:alt (chr allows 1-22,X,Y,MT or with chr prefix)
 SNV_TOKEN_RE = re.compile(r"^(?:chr)?([0-9]{1,2}|X|Y|MT):([0-9]+):([ACGTN]+):([ACGTN]+)$", re.IGNORECASE)
 
 def normalize_snv(token: str) -> str | None:
-    """把各种写法统一成 'chr:pos:ref:alt'（不带 chr 前缀），返回 None 表示不是 SNV 格式。"""
+    """Normalize variants to 'chr:pos:ref:alt' (no chr prefix); return None if not SNV format."""
     token = token.strip()
     m = SNV_TOKEN_RE.match(token)
     if not m:
         return None
     chrom, pos, ref, alt = m.group(1).upper(), m.group(2), m.group(3).upper(), m.group(4).upper()
-    # 统一不加 'chr'：比如 13:16000187:C:T
+    # Normalize without 'chr', e.g. 13:16000187:C:T
     return f"{chrom}:{pos}:{ref}:{alt}"
 
 def extract_snv_from_fields(fields: list[str]) -> str | None:
-    """从一行拆分字段中提取 SNV key。优先寻找符合 chr:pos:ref:alt 的字段。"""
+    """Extract SNV key from split fields, preferring chr:pos:ref:alt tokens."""
     for x in fields:
         k = normalize_snv(x)
         if k:
@@ -70,35 +70,35 @@ def create_anno():
 
 snv_set = load_snv_set(snv_file)
 
-# 收集各区域 SNV（用 set 去重）
+# Collect SNVs per region (use set for de-duplication)
 UTR5, exon, splice, intron, UTR3 = set(), set(), set(), set(), set()
 lnc, miR, circRNA, piRNA = set(), set(), set(), set()
 ATAC, conserved_element, enhancer, miRBS, TFBS = set(), set(), set(), set(), set()
 
 def add_if_hit(path: str, predicate, bucket: set[str]):
-    """通用读取：若该行能提取到 snv_key 且在 snv_set 中，并且 predicate(fields) 为真，则加入 bucket。"""
+    """Generic loader: add snv_key to bucket if in snv_set and predicate(fields) is True."""
     with open(path) as f:
         for line in f:
             line = line.rstrip("\n")
             if not line:
                 continue
             fields = line.split("\t")
-            # 允许注释文件是空格分隔时退化
+            # Allow fallback if annotation file is space-delimited
             if len(fields) == 1:
                 fields = line.split()
 
             snv_key = extract_snv_from_fields(fields)
 
-            # 兼容旧注释格式：如果找不到 token，就尝试用第3列（a[2]）当作 key
+            # Backward-compatible annotation format: fall back to column 3 as key
             if snv_key is None and len(fields) > 2:
-                snv_key = normalize_snv(fields[2])  # 如果 a[2] 恰好是 13:pos:ref:alt
+                snv_key = normalize_snv(fields[2])  # If fields[2] matches 13:pos:ref:alt
             if snv_key is None:
                 continue
 
             if snv_key in snv_set and predicate(fields):
                 bucket.add(snv_key)
 
-# gene.txt：按 consequence 分类
+# gene.txt: classify by consequence
 gene_path = url + "gene.txt"
 with open(gene_path) as f:
     for line in f:
@@ -130,7 +130,7 @@ with open(gene_path) as f:
         if "UTR3_variant" in cons:
             UTR3.add(snv_key)
 
-# 其他功能文件：按最后一列标签判断
+# Other annotation files: check the last column tag
 add_if_hit(url + "lnc.txt", lambda a: ("all lncRNA" in a[-1]), lnc)
 add_if_hit(url + "pre_miRNA.txt", lambda a: ("all miRNA" in a[-1]), miR)
 add_if_hit(url + "circ.txt", lambda a: ("all circRNA" in a[-1]), circRNA)
@@ -157,7 +157,7 @@ anno["enhancer"] = len(enhancer)
 anno["miRBS"] = len(miRBS)
 anno["TFBS"] = len(TFBS)
 
-# intergenic：不在任何已标注集合里的 SNV
+# intergenic: SNVs not in any annotated set
 annotated = set().union(
     UTR5, exon, splice, intron, UTR3,
     lnc, miR, circRNA, piRNA,

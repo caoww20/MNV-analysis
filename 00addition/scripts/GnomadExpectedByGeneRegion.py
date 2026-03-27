@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-功能：按与 SNVBatchRegionCount 相同的优先级，将 gnomAD expected 窗口按基因区域类型（splice/exon/UTR/intron/up/down/intergenic）分摊汇总。
-用法示例：
+Purpose: allocate gnomAD expected windows by gene-region type
+(splice/exon/UTR/intron/up/down/intergenic) using the same priority as SNVBatchRegionCount.
+Example usage:
     python GnomadExpectedByGeneRegion.py -i gnomad.windows.tsv.gz -o expected_by_region.tsv \
         --gene-db /data/jinww/mnv/MNVAnno/database/human/en_GRCh38.108_canonical_gene.anno.txt \
         --up 2000 --down 1000 --splice 2 --coord bed0 --expected-col 5
-依赖：bedtools 可用；输入列需包含 chrom start end expected(默认第6列)。
+Dependency: bedtools available; input columns must include chrom start end expected (default column 6).
 """
 import argparse
 import gzip
@@ -18,7 +19,7 @@ from collections import defaultdict
 from typing import Dict, List, Tuple, Optional
 
 # ------------------------
-# 与 SNVBatchRegionCount.py 一致的 transcript 解析（1-based inclusive）
+# Transcript parsing consistent with SNVBatchRegionCount.py (1-based inclusive)
 # ------------------------
 @dataclass(frozen=True)
 class Transcript:
@@ -122,10 +123,10 @@ def load_transcripts(gene_db_path: str) -> Dict[str, List[Transcript]]:
     return per_chr
 
 # ------------------------
-# 坐标工具：1-based inclusive -> BED(0-based, half-open)
+# Coordinate helpers: 1-based inclusive -> BED (0-based, half-open)
 # ------------------------
 def to_bed0(s1: int, e1: int) -> Tuple[int, int]:
-    # 输入 1-based inclusive [s1,e1] -> 输出 bed [s0,e0)
+    # Input 1-based inclusive [s1,e1] -> output bed [s0,e0)
     return (s1 - 1, e1)
 
 def clip_1based(s: int, e: int, lo: int, hi: int) -> Optional[Tuple[int, int]]:
@@ -145,7 +146,7 @@ def intersect_1based(a: Tuple[int, int], b: Tuple[int, int]) -> Optional[Tuple[i
     return None
 
 # ------------------------
-# 生成各类 region 的原始 interval（可能重叠），后续用 bedtools 按优先级做互斥化
+# Emit raw intervals per region (may overlap), then use bedtools to prioritize
 # ------------------------
 def emit_raw_regions(per_chr: Dict[str, List[Transcript]], up: int, down: int, splice: int, outdir: str) -> Dict[str, str]:
     paths = {k: os.path.join(outdir, f"raw.{k}.bed") for k in ["splice","exon","UTR5","UTR3","intron","upstream","downstream"]}
@@ -162,7 +163,7 @@ def emit_raw_regions(per_chr: Dict[str, List[Transcript]], up: int, down: int, s
         for t in ts:
             tx_lo, tx_hi = t.tx_start, t.tx_end
 
-            # upstream/downstream（按链，均为 1-based inclusive）
+            # Upstream/downstream (strand-aware, 1-based inclusive)
             if t.strand == "+":
                 up_iv = clip_1based(t.tx_start - up, t.tx_start - 1, 1, 10**12)
                 down_iv = clip_1based(t.tx_end + 1, t.tx_end + down, 1, 10**12)
@@ -174,8 +175,8 @@ def emit_raw_regions(per_chr: Dict[str, List[Transcript]], up: int, down: int, s
             if down_iv:
                 write_iv("downstream", chrid, down_iv[0], down_iv[1])
 
-            # UTR 区域（基于 CDS 边界，落在 exon 内）
-            # 先定义 genomic 范围（仍是 1-based inclusive）
+            # UTR regions (based on CDS boundaries, within exons)
+            # Define genomic range first (still 1-based inclusive)
             if t.strand == "+":
                 utr5_rng = (tx_lo, t.cds_start - 1)
                 utr3_rng = (t.cds_end + 1, tx_hi)
@@ -183,7 +184,7 @@ def emit_raw_regions(per_chr: Dict[str, List[Transcript]], up: int, down: int, s
                 utr3_rng = (tx_lo, t.cds_start - 1)
                 utr5_rng = (t.cds_end + 1, tx_hi)
 
-            # exon 相关：UTR5/UTR3（不做 splice 切分；与 SNVBatchRegionCount 的行为一致）
+            # Exon-related: UTR5/UTR3 (no splice splitting; matches SNVBatchRegionCount)
             for (es, ee) in t.exons:
                 if utr5_rng[0] <= utr5_rng[1]:
                     iv = intersect_1based((es, ee), utr5_rng)
@@ -194,7 +195,7 @@ def emit_raw_regions(per_chr: Dict[str, List[Transcript]], up: int, down: int, s
                     if iv:
                         write_iv("UTR3", chrid, iv[0], iv[1])
 
-            # CDS exon / splice / exon(body)
+            # CDS exon / splice / exon body
             cds_rng = (t.cds_start, t.cds_end)
             if cds_rng[0] <= cds_rng[1]:
                 for (es, ee) in t.exons:
@@ -203,7 +204,7 @@ def emit_raw_regions(per_chr: Dict[str, List[Transcript]], up: int, down: int, s
                         continue
                     cs, ce = cds_iv
 
-                    # exonic splice edges（只对 CDS exon 生效，与 SNVBatchRegionCount 一致）
+                    # Exonic splice edges (only for CDS exons, matches SNVBatchRegionCount)
                     left = (cs, min(ce, cs + splice - 1))
                     right = (max(cs, ce - splice + 1), ce)
                     if left[0] <= left[1]:
@@ -211,16 +212,16 @@ def emit_raw_regions(per_chr: Dict[str, List[Transcript]], up: int, down: int, s
                     if right[0] <= right[1]:
                         write_iv("splice", chrid, right[0], right[1])
 
-                    # exon body（CDS exon 去掉两端 splice）
+                    # Exon body (CDS exon minus both splice ends)
                     body_s = cs + splice
                     body_e = ce - splice
                     if body_s <= body_e:
                         write_iv("exon", chrid, body_s, body_e)
 
-            # intron & intronic splice flanks（对所有 exon 边界生效）
+            # Intron & intronic splice flanks (for all exon boundaries)
             exs = list(t.exons)
             exs.sort()
-            # intronic splice flanks： [es-splice, es-1] 与 [ee+1, ee+splice]，并 clip 到 transcript body
+            # Intronic splice flanks: [es-splice, es-1] and [ee+1, ee+splice], clipped to transcript body
             for (es, ee) in exs:
                 a = clip_1based(es - splice, es - 1, tx_lo, tx_hi)
                 b = clip_1based(ee + 1, ee + splice, tx_lo, tx_hi)
@@ -229,7 +230,7 @@ def emit_raw_regions(per_chr: Dict[str, List[Transcript]], up: int, down: int, s
                 if b:
                     write_iv("splice", chrid, b[0], b[1])
 
-            # intron body：相邻 exon 的 gap，去掉 splice 距离
+            # Intron body: gaps between adjacent exons, minus splice distance
             for i in range(len(exs) - 1):
                 prev_end = exs[i][1]
                 next_start = exs[i+1][0]
@@ -270,8 +271,8 @@ def bed_subtract(a_bed: str, b_bed: str, out_bed: str):
 def sum_expected_overlap(gnomad_bed: str, region_bed: str) -> float:
     """
     gnomad_bed: chr start0 end0 expected
-    region_bed: chr start0 end0   （已互斥化）
-    返回：sum(expected * overlap_bp / window_len)
+    region_bed: chr start0 end0   (non-overlapping)
+    Returns: sum(expected * overlap_bp / window_len)
     """
     total = 0.0
     p = subprocess.Popen(
@@ -296,11 +297,11 @@ def sum_expected_overlap(gnomad_bed: str, region_bed: str) -> float:
 
 def read_gnomad_to_bed(in_tsv: str, out_bed: str, coord: str, expected_col: int):
     """
-    生成 BED4: chr start0 end0 expected
+        Emit BED4: chr start0 end0 expected
     coord:
-      - bed0: 输入 start/end 为 0-based half-open（gnomAD 常见）
-      - 1based: 输入 start/end 为 1-based inclusive
-    expected_col: 0-based 列号（默认示例第6列 => 5）
+            - bed0: input start/end are 0-based half-open (common in gnomAD)
+            - 1based: input start/end are 1-based inclusive
+        expected_col: 0-based column index (default example col 6 => 5)
     """
     opener = gzip.open if in_tsv.endswith(".gz") else open
     with opener(in_tsv, "rt", encoding="utf-8", errors="ignore") as f, open(out_bed, "w", encoding="utf-8") as out:
@@ -310,7 +311,7 @@ def read_gnomad_to_bed(in_tsv: str, out_bed: str, coord: str, expected_col: int)
                 continue
             if first:
                 first = False
-                # 跳过表头（如果第2列不是整数）
+                # Skip header if column 2 is not an integer
                 parts = line.rstrip("\n").split("\t")
                 if len(parts) > 2 and (not is_int(parts[1])):
                     continue
@@ -327,7 +328,7 @@ def read_gnomad_to_bed(in_tsv: str, out_bed: str, coord: str, expected_col: int)
             except Exception:
                 continue
 
-            # 统一 chr 前缀
+            # Normalize chr prefix
             chrom = to_chr(chrom)
 
             if coord == "bed0":
