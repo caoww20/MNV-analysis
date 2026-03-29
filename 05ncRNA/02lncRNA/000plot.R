@@ -40,9 +40,7 @@ library(smplot2)
   b<-nrow(mnv_diff[abs(mnv_diff$V4)==1,])
   # diff_snv & diff_ref
   c<-nrow(mnv_snv_diff[mnv_snv_diff$V8==1,])
-  
-  # 745811 237008 75041
-  
+    
   # 大圆
   ratio <- c(1-b/a, b/a)
   type <- c('no_change', 'diff_ref')

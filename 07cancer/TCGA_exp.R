@@ -10,8 +10,6 @@ mythem=theme(panel.grid=element_blank(),
              axis.title.y=element_text(vjust=2, size=8,face = "bold", color='black')
 )
 
-# setwd('/data/jinww/04reference/publicDB/PancanMNVQTL/phenotype/eQTL')
-# LUAD=read.table('LUAD_eQTL_quantity.filtered',header = T,sep = '\t')
 setwd("/data/jinww/04reference/publicDB/TCGA/expression_20220422")
 LUAD2=read.table('LUAD_gene_exp',header = T,sep = '\t')
 df1 <- LUAD2[, grep("\\.01", names(LUAD2))]

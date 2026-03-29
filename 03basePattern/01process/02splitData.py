@@ -1,9 +1,7 @@
 import sys
-##从原始表格中提取不同连体的MNV数据#######################################################
 filename = sys.argv[1] 
 # filename='1000G.txt'
 output=filename.split('.')[0]+'_adjust.txt'
-# 提取MNV矫正MNV和原始MNV一致的，因为这部分的MNV具有唯一性
 f=open(filename)
 res=open(output,'w')
 # 22      50786565,50786574       .       G,A     C,G     22:50786565:G:C,22:50786574:A:G 9       2       1       1       0.0001561524    0       3119

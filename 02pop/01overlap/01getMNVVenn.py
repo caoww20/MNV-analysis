@@ -10,14 +10,6 @@ mydata2['EAS']=[]
 mydata2['EUR']=[]
 mydata2['SAS']=[]
 
-# def getMAFMNV(x,cancer):
-#     for ii in x.split(';'):
-#         if ii.startswith(cancer):
-#             maf=float(ii.split('/')[1].split('|')[0])
-#             if maf>0.5:
-#                 maf=1-maf
-#             return maf
-
 
 # 1000G
 f=open(file)

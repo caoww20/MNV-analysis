@@ -96,15 +96,11 @@ library("qqman") #加载R包
 {
   # MNV FST
   df<-read.table('03fst/filter/all_100k_5.windowed.weir.fst',header = T,stringsAsFactors = F)
-  # 0.686273
   df<-read.table('03fst/filter/all_5.weir.fst',header = T,stringsAsFactors = F)
-  # 0.755189
   
   # SNV FST
   df<-read.table('03fst/snv/all_100k.windowed.weir.fst',header = T,stringsAsFactors = F)
-  # 0.532347
   df<-read.table('03fst/snv/all.weir.fst',header = T,stringsAsFactors = F)
-  # 0.920606
 }
 # 计算两者的相关性
 {
@@ -119,20 +115,12 @@ library("qqman") #加载R包
   res<-na.omit(res)
    
   dfcor<-cor.test(res$WEIGHTED_FST.x,res$WEIGHTED_FST.y,method = 'spearm') # rho=0.6594451
-  # print(c(dfcor$estimate,dfcor$p.value))
-  # ggplot(data=res,aes(x=WEIGHTED_FST.x,y=WEIGHTED_FST.y))+
-  #   geom_point(pch=16,size=3,alpha=0.5)+
-  #   labs(title = '',x='',y='')+ 
-  #   theme_bw() + mythem
+
 }
 # 绘制MNV和SNV人群的热图以及相减图
 {
   library(pheatmap)
   mnvHeatmap = read.table("./03fst/significant/heatmap_mnv.txt",header = T,row.names = 1)
-  # my_palette <- colorRampPalette(c("blue", "red"))(n = 100)
-  # my_colors = colorRampPalette(c("#1A325F","#2272B4","#9AC9E0","white","#F5AC89","#BD2A34","#650520"))(100)
-  # my_colors <- colorRampPalette(c("#9AC9E0","#2272B4","#1A325F","#040419"))(100)
-  # my_colors <- colorRampPalette(colors = c("#F06143","#E33641","#AE1758","#471D49","#040419"))(100)
   my_colors <- colorRampPalette(c("#9AC9E0","#2272B4","#1A325F"))(100)
   my_colors <- colorRampPalette(colors = c("#F06143","#E33641","#AE1758","#471D49"))(100)
   pheatmap(mnvHeatmap,
@@ -158,17 +146,6 @@ library("qqman") #加载R包
            color = my_colors,
            breaks = seq(0, 0.2, by = 0.002) # breaks的数量最好和my_colors一致
   )
-  # diffHeatmap = read.table("./03fst/significant/heatmap_diff.txt",header = T,row.names = 1)
-  # pheatmap(diffHeatmap)
-  # pheatmap(snvHeatmap,
-  #          display_numbers = TRUE,
-  #          number_color = "white",
-  #          number_format = "%.3f",
-  #          border_color = "white",
-  #          fontsize=16,
-  #          color = my_colors,
-  #          breaks = seq(0, 0.2, by = 0.002) # breaks的数量最好和my_colors一致
-  # )
 }
 # 计算不同人群的FST≥0.15的MNV的数量（以及任一都大于0.15的数量）
 {
@@ -195,13 +172,6 @@ library("qqman") #加载R包
     plot = p,width = 8,height = 6,
     units = 'in'
   )
-  # 合成一个
-  # ggplot(df, aes(x = pop, y = value, fill = variable)) +
-  #   geom_bar(stat = 'identity', position = 'dodge') +
-  #   ylim(0, 120000)+
-  #   labs(x = 'pop', y = 'value', fill = 'variable') +
-  #   scale_fill_manual(values = c("#3353A3","#B71C36"))+
-  #   theme_bw()+mythem
 }
 # 富集图
 {

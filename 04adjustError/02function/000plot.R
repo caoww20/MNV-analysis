@@ -25,16 +25,6 @@ library(data.table)
   data<-as.data.frame(table(data[1:2]),stringsAsFactors=F)
   data<-data[data$Freq>0,]
   colnames(data)<-c('snv','mnv','freq')
-  
-  # 修饰数据（但龚老师不同意）
-  {
-    # 考虑到有两个值特别大，所以进行适当的缩放
-    data[1,3]=3000
-    data[3,3]=2500
-    data[4,3]=2500
-    # data<-data[-10,] # 对于synonymous_variant->stop_lost,新的版本已经归到stop_lost->stop_lost，所以这里就不需要了
-    data[data$freq<=48,3]<-100
-  }
 
   # 绘图
   rownames(data)<-NULL
@@ -109,17 +99,6 @@ library(data.table)
     units = 'in'
   )
 }
-
-## PTV的数量
-{
-  data<-read.table('02canonicalTrans/merge_total.txt',header = T,sep = '\t',stringsAsFactors = F)
-  data<-data[c(3,15,19,23,27:37)]
-  # complete gain stop。两个点都没有获得，但是MNV获得终止
-  sum(data$complete.gain.stop) # 522
-  # rescue stop。只有是拯救的都是
-  sum(data$rescue.stop) # 1986
-}
-
 
 
 

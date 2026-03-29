@@ -1,7 +1,7 @@
 # python 003getTFBS.py protein.promotor.oneline.fix ../03caow/jaspar_hg38_fix jaspar jaspar_gene.txt jaspar_pair.txt
 import sys
 input1 = sys.argv[1] # input1='protein.promotor.oneline.fix'
-input2 = sys.argv[2] # input2='../03caow/hocomoco_hg38_fix'
+input2 = sys.argv[2] # input2='../03caow/jaspar_hg38_fix'
 flag = sys.argv[3] # flag='jaspar'
 output_file = sys.argv[4] # output_file='jaspar_gene.txt'
 output_file2 = sys.argv[5] # output_file='jaspar_pair.txt'

@@ -343,15 +343,7 @@ colorPalette<-c("#e41a1c","#377eb8","#4daf4a","9ecae1","#6baed6","#4292c6")
   }
   # Compute accuracy, precision, sensitivity, specificity
   getThreeVal<-function(data,aa_results){
-    # Create dataset (example)
-    # data <- data.frame(
-    #   id = c("mnv1", "mnv2", "mnv3", "mnv4", "mnv5", "mnv6", "mnv7", "mnv8", "mnv9", "mnv10", "mnv11"),
-    #   isture = c(1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0)
-    # )
-    # 
-    # Calls identified by method aa (example)
-    # aa_results <- c("mnv2", "mnv3", "mnv6", "mnv7", "mnv8")
-    
+
     # Calculate TP (True Positive)
     TP <- sum(data$id %in% aa_results & data$isture == 1)
     
@@ -376,10 +368,6 @@ colorPalette<-c("#e41a1c","#377eb8","#4daf4a","9ecae1","#6baed6","#4292c6")
     # Calculate specificity
     specificity <- TN / (TN + FP)
     
-    # Output (examples)
-    # cat("Accuracy:", accuracy, "\n")
-    # cat("Sensitivity:", sensitivity, "\n")
-    # cat("Specificity:", specificity, "\n")
     return(c(accuracy,precision,sensitivity,specificity))
   }
   # Merge results from the four methods

@@ -1,15 +1,3 @@
-## Preprocessing (copy data from Luo Haohui, this version retains MHC and black)
-    ## MHC
-    https://www.ncbi.nlm.nih.gov/grc/human/regions/MHC?asm=GRCh38
-    https://www.ncbi.nlm.nih.gov/grc/human/regions/MHC?asm=GRCh37
-    hg19 chr6:28477797-33448354
-    hg38 chr6:28510120-33480577
-## Copy data from Luo Haohui
-    cp /home/luohh/MNV_analysis/Statistic3/all_dataset/hg19/all.hg19.results.mnv ./
-    cp /home/luohh/MNV_analysis/Statistic3/all_dataset/hg38/all.hg38.results.mnv ./
-## Preprocess data (hg38 version processing)
-    awk '{if ($8<6) print $o}' all.hg19.results.mnv >hg19mnv &
-    awk '{if ($8<6) print $o}' all.hg38.results.mnv >hg38mnv &
 ## Split datasets into individual datasets and mark MNV sources
     python 001splitData.py 01origin/hg38mnv 02datasets
 ## Annotate hg38_humanMNV
@@ -82,15 +70,3 @@
     cat mnv.list |while read id;do (awk '$6=="0" {print $o}' $id |wc -l >>filter.txt);done
     # Merge
     paste mnv.list total.txt adjust.txt filter.txt > merge.txt
-
-## R program to view data for each dataset
-    df<-fread('flag_datasets',header = T,sep='\t',stringsAsFactors = F,data.table = F)
-    df$gnomad<-df$GnomAD_WGS+df$GnomAD_WES
-    df[df$gnomad==2,'gnomad']<-1
-    df$diff<-df$Sum-df$gnomad
-    df<-df[df$diff>0,]
-    nrow(df)
-    nrow(df[df$mnvtype==2,])
-    nrow(df[df$mnvtype==3,])
-    nrow(df[df$mnvtype==4,])
-    nrow(df[df$mnvtype==5,])

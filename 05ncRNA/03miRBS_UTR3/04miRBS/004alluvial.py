@@ -23,13 +23,3 @@ with open(res_file,'w') as res:
         snv_type=a[3].split(',')
         for ii in snv_type:
             res.write(ii+'\t'+mnv_type+'\n')
-
-# 不考虑no_change的情况
-# with open(input1) as f, open(res_file,'w') as res:
-#     for i in f:
-#         a=i.strip().split('\t')
-#         mnv_type=a[2]
-#         snv_type=a[3].split(',')
-#         for ii in snv_type:
-#             res.write(ii+'\t'+mnv_type+'\n')
-        

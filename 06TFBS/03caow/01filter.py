@@ -1,6 +1,5 @@
-# python 01filter.py hocomoco_hg38 hocomoco_hg38_fix
 import sys
-input_file = sys.argv[1] # hocomoco_hg38
+input_file = sys.argv[1] # 
 output_file = sys.argv[2]
 
 with open(input_file) as f, open(output_file,'w') as w:

@@ -39,14 +39,7 @@ library(data.table)
   venn::venn(x,zcolor=2:5,box=T)
   # 手动保存为图1000G_overlap.pdf 8*8
   table(a$V1)
-  # AFR     AMR     EAS     EUR     SAS 
-  # 1840367 1203314 888644 979825 1048132 
-  # uniq
-  # 808578 178624 263455 167428 287779
-  # 43.93% 14.84% 29.65% 17.09% 27.46%
 }
-
-#########因为上面得到的uniq很多，所以我们进一步看了SNV的情况和MNV uniqu的分布###########################################
 
 # 计算不同人群的SNV分组情况
 {
@@ -67,12 +60,6 @@ library(data.table)
     plot = p,width = 8,height = 6,
     units = 'in'
   )
-  # pop percent
-  # 1 AFR.snv     39%
-  # 2 AMR.snv     13%
-  # 3 SAS.snv     29%
-  # 4 EUR.snv     15%
-  # 5 EAS.snv     33%
 }
 
 # 计算不同人群的common_SNV涉及到的MNV分组情况
@@ -86,12 +73,6 @@ library(data.table)
   venn::venn(x,zcolor=2:5,box=T)
   # 手动保存到1000G_overlap_common.pdf 8*8
   table(a$V1)
-  # AFR    AMR    EAS    EUR    SAS 
-  # 459661 426229 427428 430886 435297 
-  # length(unique(a$V2)) 541397
-  # uniq
-  # 30746 10138 15515 13136 15152
-  # 6.69% 2.38% 3.63% 3.05% 3.48%
 }
 
 
